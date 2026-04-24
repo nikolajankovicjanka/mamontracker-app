@@ -1,0 +1,79 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: mamontrucker_app
+    user: "${UID}:${GID}"
+    working_dir: /var/www/html
+    volumes:
+      - ./apps/api:/var/www/html
+      - ./docker/php/zz-local.ini:/usr/local/etc/php/conf.d/zz-local.ini
+    depends_on:
+      - db
+      - redis
+    networks:
+      - mamontrucker
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: mamontrucker_nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./apps/api:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - mamontrucker
+
+  db:
+    image: mysql:8.0
+    container_name: mamontrucker_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: mamontrucker
+      MYSQL_USER: mamontrucker
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - mamontrucker_db_data:/var/lib/mysql
+    networks:
+      - mamontrucker
+
+  redis:
+    image: redis:7-alpine
+    container_name: mamontrucker_redis
+    networks:
+      - mamontrucker
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mamontrucker_mailpit
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - mamontrucker
+
+  node:
+    image: node:22-alpine
+    container_name: mamontrucker_node
+    user: "${UID}:${GID}"
+    working_dir: /app
+    tty: true
+    volumes:
+      - ./apps/web:/app
+    ports:
+      - "5173:5173"
+    networks:
+      - mamontrucker
+
+volumes:
+  mamontrucker_db_data:
+
+networks:
+  mamontrucker:

@@ -1,0 +1,8 @@
+.env
+.idea/
+apps/api/.env
+apps/api/vendor/
+apps/api/node_modules/
+apps/api/public/build/
+apps/web/node_modules/
+apps/web/dist/
