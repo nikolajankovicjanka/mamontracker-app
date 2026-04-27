@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use Database\Factories\UserFactory;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
@@ -76,5 +78,15 @@ class User extends Authenticatable
         }
 
         return $this->belongsToTenant($tenantId);
+    }
+
+    public function canManageTenantData(): bool
+    {
+        return $this->isPlatformSuperAdmin() || $this->isTenantAdmin();
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->isPlatformSuperAdmin() && $this->is_active;
     }
 }
