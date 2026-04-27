@@ -6,6 +6,8 @@ services:
     container_name: mamontrucker_app
     user: "${UID}:${GID}"
     working_dir: /var/www/html
+    environment:
+      COMPOSER_HOME: /tmp/composer
     volumes:
       - ./apps/api:/var/www/html
       - ./docker/php/zz-local.ini:/usr/local/etc/php/conf.d/zz-local.ini
