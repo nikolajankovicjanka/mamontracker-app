@@ -17,6 +17,7 @@ class GpsDevice extends Model
         'imei',
         'traccar_device_id',
         'sim_number',
+        'capabilities',
         'is_active',
         'last_payload',
         'last_sync_at',
@@ -25,6 +26,7 @@ class GpsDevice extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'last_payload' => 'array',
+        'capabilities' => 'array',
         'last_sync_at' => 'datetime',
     ];
 
@@ -43,6 +45,11 @@ class GpsDevice extends Model
         return $this->hasMany(Alert::class);
     }
 
+    public function assignmentHistory(): HasMany
+    {
+        return $this->hasMany(GpsDeviceVehicleHistory::class);
+    }
+
     public function isActive(): bool
     {
         return $this->is_active;
@@ -56,5 +63,15 @@ class GpsDevice extends Model
     public function hasTraccarDevice(): bool
     {
         return $this->traccar_device_id !== null;
+    }
+
+    public function hasCapabilities(): bool
+    {
+        return ! empty($this->capabilities);
+    }
+
+    public function supports(string $feature): bool
+    {
+        return (bool) data_get($this->capabilities, $feature, false);
     }
 }
