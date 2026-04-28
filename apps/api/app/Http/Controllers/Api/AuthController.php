@@ -40,7 +40,7 @@ class AuthController extends Controller
             ]);
         }
 
-        Auth::login($user, (bool) ($validated['remember'] ?? false));
+        Auth::guard('web')->login($user, (bool) ($validated['remember'] ?? false));
         $request->session()->regenerate();
 
         $user->forceFill([
@@ -66,7 +66,7 @@ class AuthController extends Controller
         }
 
         if (! $tenant || ! $tenant->is_active || ! $user->canAccessTenant($tenant->id)) {
-            Auth::logout();
+            Auth::guard('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
@@ -83,7 +83,7 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        Auth::logout();
+        Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
