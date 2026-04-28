@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Vehicle extends Model
 {
@@ -40,9 +41,14 @@ class Vehicle extends Model
         return $this->belongsTo(Tenant::class);
     }
 
-    public function gpsDevices(): HasMany
+    public function activeGpsDevice(): HasOne
     {
-        return $this->hasMany(GpsDevice::class);
+        return $this->hasOne(GpsDevice::class);
+    }
+
+    public function gpsDeviceAssignmentHistory(): HasMany
+    {
+        return $this->hasMany(GpsDeviceVehicleHistory::class);
     }
 
     public function services(): HasMany
@@ -53,5 +59,27 @@ class Vehicle extends Model
     public function alerts(): HasMany
     {
         return $this->hasMany(Alert::class);
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status === 'active';
+    }
+
+    public function hasExpiredRegistration(): bool
+    {
+        return $this->registration_expiry_date !== null
+            && $this->registration_expiry_date->isPast();
+    }
+
+    public function registrationExpiresInDays(int $days = 7): bool
+    {
+        if ($this->registration_expiry_date === null) {
+            return false;
+        }
+
+        $diff = now()->startOfDay()->diffInDays($this->registration_expiry_date, false);
+
+        return $diff >= 0 && $diff <= $days;
     }
 }

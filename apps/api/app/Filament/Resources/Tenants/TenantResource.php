@@ -8,6 +8,7 @@ use App\Filament\Resources\Tenants\Pages\ListTenants;
 use App\Filament\Resources\Tenants\RelationManagers\DomainsRelationManager;
 use App\Filament\Resources\Tenants\RelationManagers\UsersRelationManager;
 use App\Filament\Resources\Tenants\RelationManagers\VehiclesRelationManager;
+use App\Filament\Resources\Tenants\RelationManagers\GpsDevicesRelationManager;
 use App\Models\Tenant;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -116,6 +117,7 @@ class TenantResource extends Resource
             DomainsRelationManager::class,
             UsersRelationManager::class,
             VehiclesRelationManager::class,
+            GpsDevicesRelationManager::class,
         ];
     }
 
