@@ -11,20 +11,21 @@ class ResolveTenant
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $host = strtolower($request->getHttpHost());
-        $host = preg_replace('/:\d+$/', '', $host);
+        $host = $request->getHost();
+        $adminHost = config('app.admin_host', 'admin.localhost');
 
-        $tenantDomain = TenantDomain::query()
-            ->with('tenant')
+        if ($host === $adminHost) {
+            return $next($request);
+        }
+
+        $tenantDomain = TenantDomain::with('tenant')
             ->where('domain', $host)
             ->where('is_active', true)
             ->first();
 
-        abort_unless(
-            $tenantDomain && $tenantDomain->tenant && $tenantDomain->tenant->is_active,
-            404,
-            'Tenant not found.'
-        );
+        if (! $tenantDomain || ! $tenantDomain->tenant || ! $tenantDomain->tenant->is_active) {
+            abort(404, 'Tenant not found.');
+        }
 
         app()->instance('currentTenant', $tenantDomain->tenant);
         app()->instance('currentTenantDomain', $tenantDomain);
