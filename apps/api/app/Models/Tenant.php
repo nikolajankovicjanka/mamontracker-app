@@ -55,6 +55,18 @@ class Tenant extends Model
         return $this->hasMany(GpsDevice::class);
     }
 
+    public function featureMap(): array
+    {
+        $plan = $this->plan ?? 'basic';
+
+        return config("tenant_features.{$plan}", []);
+    }
+
+    public function hasFeature(string $feature): bool
+    {
+        return (bool) data_get($this->featureMap(), $feature, false);
+    }
+
     public function vehicleServices(): HasMany
     {
         return $this->hasMany(VehicleService::class);

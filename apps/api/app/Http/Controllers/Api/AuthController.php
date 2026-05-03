@@ -114,6 +114,7 @@ class AuthController extends Controller
             'plan' => $tenant->plan,
             'is_active' => $tenant->is_active,
             'settings' => $tenant->settings,
+            'features' => $tenant->featureMap(),
         ];
     }
 }
