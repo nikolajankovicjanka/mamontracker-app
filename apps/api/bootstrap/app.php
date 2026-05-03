@@ -22,6 +22,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(prepend: [
             ResolveTenant::class,
         ]);
+
+        $middleware->alias([
+            'tenant.feature' => \App\Http\Middleware\EnsureTenantHasFeature::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

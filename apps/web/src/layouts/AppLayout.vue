@@ -15,17 +15,14 @@ const navigation = computed(() => {
   const features = auth.tenant?.features ?? {}
 
   return [
-    { name: 'dashboard', label: 'Dashboard', to: '/' },
+    { name: 'dashboard', label: 'Dashboard', to: '/', feature: 'dashboard' },
     { name: 'vehicles', label: 'Vehicles', to: '/vehicles', feature: 'vehicles' },
     { name: 'gps-devices', label: 'GPS Devices', to: '/gps-devices', feature: 'gps_devices' },
     { name: 'services', label: 'Services', to: '/services', feature: 'services' },
     { name: 'registrations', label: 'Registrations', to: '/registrations', feature: 'registrations' },
     { name: 'users', label: 'Users', to: '/users', feature: 'users' },
     { name: 'reports', label: 'Reports', to: '/reports', feature: 'reports' },
-  ].filter((item) => {
-    if (!item.feature) return true
-    return !!features[item.feature]
-  })
+  ].filter((item) => !!features[item.feature])
 })
 
 function isActive(path: string) {

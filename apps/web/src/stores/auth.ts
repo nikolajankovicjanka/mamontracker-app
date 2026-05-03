@@ -19,6 +19,7 @@ export type AuthTenant = {
     plan: string | null
     is_active: boolean
     settings: Record<string, unknown> | null
+    features: Record<string, boolean>
 }
 
 type LoginPayload = {
