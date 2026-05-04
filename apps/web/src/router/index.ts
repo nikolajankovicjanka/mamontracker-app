@@ -5,6 +5,9 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import LoginView from '@/views/LoginView.vue'
 import DashboardView from '@/views/DashboardView.vue'
 import PlaceholderView from '@/views/PlaceholderView.vue'
+import VehiclesView from '@/views/VehiclesView.vue'
+import VehicleShowView from '@/views/VehicleShowView.vue'
+import VehicleFormView from '@/views/VehicleFormView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -29,9 +32,26 @@ const router = createRouter({
         {
           path: 'vehicles',
           name: 'vehicles',
-          component: PlaceholderView,
-          props: { title: 'Vehicles' },
+          component: VehiclesView,
           meta: { feature: 'vehicles' },
+        },
+        {
+          path: 'vehicles/create',
+          name: 'vehicle-create',
+          component: VehicleFormView,
+          meta: { feature: 'vehicles', requiresTenantAdmin: true },
+        },
+        {
+          path: 'vehicles/:id',
+          name: 'vehicle-show',
+          component: VehicleShowView,
+          meta: { feature: 'vehicles' },
+        },
+        {
+          path: 'vehicles/:id/edit',
+          name: 'vehicle-edit',
+          component: VehicleFormView,
+          meta: { feature: 'vehicles', requiresTenantAdmin: true },
         },
         {
           path: 'gps-devices',
@@ -96,6 +116,10 @@ router.beforeEach(async (to) => {
     if (!features[requiredFeature]) {
       return { name: 'dashboard' }
     }
+  }
+
+  if (to.meta.requiresTenantAdmin && auth.user?.role !== 'tenant_admin') {
+    return { name: 'dashboard' }
   }
 
   return true
