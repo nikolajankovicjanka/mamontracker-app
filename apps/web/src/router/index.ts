@@ -8,6 +8,9 @@ import PlaceholderView from '@/views/PlaceholderView.vue'
 import VehiclesView from '@/views/VehiclesView.vue'
 import VehicleShowView from '@/views/VehicleShowView.vue'
 import VehicleFormView from '@/views/VehicleFormView.vue'
+import GpsDevicesView from '@/views/GpsDevicesView.vue'
+import GpsDeviceShowView from '@/views/GpsDeviceShowView.vue'
+import GpsDeviceFormView from '@/views/GpsDeviceFormView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -56,9 +59,26 @@ const router = createRouter({
         {
           path: 'gps-devices',
           name: 'gps-devices',
-          component: PlaceholderView,
-          props: { title: 'GPS Devices' },
+          component: GpsDevicesView,
           meta: { feature: 'gps_devices' },
+        },
+        {
+          path: 'gps-devices/create',
+          name: 'gps-device-create',
+          component: GpsDeviceFormView,
+          meta: { feature: 'gps_devices', requiresTenantAdmin: true },
+        },
+        {
+          path: 'gps-devices/:id',
+          name: 'gps-device-show',
+          component: GpsDeviceShowView,
+          meta: { feature: 'gps_devices' },
+        },
+        {
+          path: 'gps-devices/:id/edit',
+          name: 'gps-device-edit',
+          component: GpsDeviceFormView,
+          meta: { feature: 'gps_devices', requiresTenantAdmin: true },
         },
         {
           path: 'services',

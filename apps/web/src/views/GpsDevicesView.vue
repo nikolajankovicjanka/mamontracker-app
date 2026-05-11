@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useVehiclesStore } from '@/stores/vehicles'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useGpsDevicesStore } from '@/stores/gpsDevices'
 
-const vehiclesStore = useVehiclesStore()
 const router = useRouter()
 const auth = useAuthStore()
-const canManage = computed(() => auth.user?.role === 'tenant_admin')
+const gpsDevicesStore = useGpsDevicesStore()
 
 const {
   items,
@@ -19,38 +18,29 @@ const {
   search,
   status,
   hasItems,
-} = storeToRefs(vehiclesStore)
+} = storeToRefs(gpsDevicesStore)
+
+const canManage = computed(() => auth.user?.role === 'tenant_admin')
 
 onMounted(async () => {
-  await vehiclesStore.fetchVehicles()
+  await gpsDevicesStore.fetchDevices()
 })
 
 const statusOptions = [
   { label: 'All statuses', value: '' },
   { label: 'Active', value: 'active' },
   { label: 'Inactive', value: 'inactive' },
-  { label: 'Maintenance', value: 'maintenance' },
 ]
 
 const from = computed(() => {
   if (!items.value.length) return 0
-  return (page.value - 1) * vehiclesStore.perPage + 1
+  return (page.value - 1) * gpsDevicesStore.perPage + 1
 })
 
 const to = computed(() => {
   if (!items.value.length) return 0
-  return (page.value - 1) * vehiclesStore.perPage + items.value.length
+  return (page.value - 1) * gpsDevicesStore.perPage + items.value.length
 })
-
-function formatDate(date: string | null) {
-  if (!date) return '—'
-
-  return new Intl.DateTimeFormat('sr-Latn-RS', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(new Date(date))
-}
 
 function formatDateTime(date: string | null) {
   if (!date) return '—'
@@ -63,16 +53,6 @@ function formatDateTime(date: string | null) {
     minute: '2-digit',
   }).format(new Date(date))
 }
-
-function formatMileage(value: number) {
-  return `${new Intl.NumberFormat('sr-Latn-RS').format(value)} km`
-}
-
-function statusBadgeClass(value: string) {
-  if (value === 'active') return 'bg-emerald-50 text-emerald-700'
-  if (value === 'inactive') return 'bg-rose-50 text-rose-700'
-  return 'bg-amber-50 text-amber-700'
-}
 </script>
 
 <template>
@@ -80,16 +60,16 @@ function statusBadgeClass(value: string) {
     <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
       <div>
         <h1 class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          Vozila
+          GPS Devices
         </h1>
         <p class="mt-2 text-sm text-slate-500">
-          Upravljanje i pregled vozilima
+          Manage GPS devices and assignments.
         </p>
       </div>
 
       <div class="flex flex-wrap items-center gap-3">
         <div class="text-sm text-slate-500">
-          Ukupno vozila:
+          Total devices:
           <span class="font-semibold text-slate-800">{{ total }}</span>
         </div>
 
@@ -97,9 +77,9 @@ function statusBadgeClass(value: string) {
             v-if="canManage"
             type="button"
             class="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
-            @click="router.push({ name: 'vehicle-create' })"
+            @click="router.push({ name: 'gps-device-create' })"
         >
-          Dodaj vozilo
+          Add GPS device
         </button>
       </div>
     </div>
@@ -107,13 +87,13 @@ function statusBadgeClass(value: string) {
     <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_220px_auto]">
         <div>
-          <label class="mb-2 block text-sm font-medium text-slate-700">Pretraga</label>
+          <label class="mb-2 block text-sm font-medium text-slate-700">Search</label>
           <input
               v-model="search"
               type="text"
-              placeholder="Search by name, brand, model, plate or VIN"
+              placeholder="Search by device name, model, IMEI, SIM or Traccar ID"
               class="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
-              @keyup.enter="vehiclesStore.applyFilters()"
+              @keyup.enter="gpsDevicesStore.applyFilters()"
           />
         </div>
 
@@ -122,7 +102,7 @@ function statusBadgeClass(value: string) {
           <select
               v-model="status"
               class="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
-              @change="vehiclesStore.applyFilters()"
+              @change="gpsDevicesStore.applyFilters()"
           >
             <option
                 v-for="option in statusOptions"
@@ -138,7 +118,7 @@ function statusBadgeClass(value: string) {
           <button
               type="button"
               class="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800 lg:w-auto"
-              @click="vehiclesStore.applyFilters()"
+              @click="gpsDevicesStore.applyFilters()"
           >
             Apply filters
           </button>
@@ -148,21 +128,21 @@ function statusBadgeClass(value: string) {
 
     <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-lg font-semibold text-slate-900">Fleet list</h2>
+        <h2 class="text-lg font-semibold text-slate-900">Device list</h2>
         <div class="text-sm text-slate-500">
           Showing {{ from }}–{{ to }} of {{ total }}
         </div>
       </div>
 
       <div v-if="loading" class="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
-        Loading vehicles...
+        Loading GPS devices...
       </div>
 
       <div
           v-else-if="!hasItems"
           class="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-500"
       >
-        No vehicles found for the current filters.
+        No GPS devices found for the current filters.
       </div>
 
       <template v-else>
@@ -170,55 +150,41 @@ function statusBadgeClass(value: string) {
           <table class="min-w-full text-left">
             <thead>
             <tr class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
-              <th class="pb-3 font-medium">Vozilo</th>
-              <th class="pb-3 font-medium">Registracija</th>
-              <th class="pb-3 font-medium">Kilometraza</th>
-              <th class="pb-3 font-medium">Registracija</th>
-              <th class="pb-3 font-medium">GPS Device</th>
+              <th class="pb-3 font-medium">Device</th>
+              <th class="pb-3 font-medium">IMEI</th>
+              <th class="pb-3 font-medium">Assigned vehicle</th>
+              <th class="pb-3 font-medium">SIM</th>
               <th class="pb-3 font-medium">Last sync</th>
               <th class="pb-3 font-medium">Status</th>
             </tr>
             </thead>
             <tbody>
             <tr
-                v-for="vehicle in items"
-                :key="vehicle.id"
+                v-for="device in items"
+                :key="device.id"
                 class="border-b border-slate-100 last:border-b-0"
             >
               <td class="py-4">
                 <button
                     type="button"
                     class="text-left"
-                    @click="router.push({ name: 'vehicle-show', params: { id: vehicle.id } })"
+                    @click="router.push({ name: 'gps-device-show', params: { id: device.id } })"
                 >
-                  <div class="font-semibold text-slate-900 hover:underline">{{ vehicle.name }}</div>
+                  <div class="font-semibold text-slate-900 hover:underline">{{ device.device_name }}</div>
                   <div class="mt-1 text-sm text-slate-500">
-                    {{ vehicle.brand }} {{ vehicle.model }}
-                    <span v-if="vehicle.production_year">· {{ vehicle.production_year }}</span>
+                    {{ device.provider }} <span v-if="device.model">· {{ device.model }}</span>
                   </div>
                 </button>
               </td>
 
               <td class="py-4 text-slate-600">
-                {{ vehicle.license_plate || '—' }}
-              </td>
-
-              <td class="py-4 font-semibold text-slate-900">
-                {{ formatMileage(vehicle.current_mileage) }}
+                {{ device.imei }}
               </td>
 
               <td class="py-4 text-slate-600">
-                {{ formatDate(vehicle.registration_expiry_date) }}
-              </td>
-
-              <td class="py-4 text-slate-600">
-                <template v-if="vehicle.gps_device">
-                  <div class="font-medium text-slate-900">
-                    {{ vehicle.gps_device.device_name }}
-                  </div>
-                  <div class="mt-1 text-xs text-slate-500">
-                    {{ vehicle.gps_device.is_active ? 'Active device' : 'Inactive device' }}
-                  </div>
+                <template v-if="device.vehicle">
+                  {{ device.vehicle.name }}
+                  <div class="text-xs text-slate-400">{{ device.vehicle.license_plate }}</div>
                 </template>
                 <template v-else>
                   —
@@ -226,15 +192,19 @@ function statusBadgeClass(value: string) {
               </td>
 
               <td class="py-4 text-slate-600">
-                {{ formatDateTime(vehicle.gps_device?.last_sync_at ?? null) }}
+                {{ device.sim_number || '—' }}
+              </td>
+
+              <td class="py-4 text-slate-600">
+                {{ formatDateTime(device.last_sync_at) }}
               </td>
 
               <td class="py-4">
                   <span
                       class="rounded-full px-2.5 py-1 text-xs font-medium"
-                      :class="statusBadgeClass(vehicle.status)"
+                      :class="device.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'"
                   >
-                    {{ vehicle.status }}
+                    {{ device.is_active ? 'Active' : 'Inactive' }}
                   </span>
               </td>
             </tr>
@@ -244,36 +214,31 @@ function statusBadgeClass(value: string) {
 
         <div class="space-y-3 xl:hidden">
           <div
-              v-for="vehicle in items"
-              :key="vehicle.id"
-              class="rounded-2xl border border-slate-200 p-4 cursor-pointer hover:bg-slate-50"
-              @click="router.push({ name: 'vehicle-show', params: { id: vehicle.id } })"
+              v-for="device in items"
+              :key="device.id"
+              class="cursor-pointer rounded-2xl border border-slate-200 p-4 hover:bg-slate-50"
+              @click="router.push({ name: 'gps-device-show', params: { id: device.id } })"
           >
             <div class="flex items-start justify-between gap-4">
               <div class="min-w-0">
-                <div class="font-semibold text-slate-900">{{ vehicle.name }}</div>
+                <div class="font-semibold text-slate-900">{{ device.device_name }}</div>
                 <div class="mt-1 text-sm text-slate-500">
-                  {{ vehicle.brand }} {{ vehicle.model }}
+                  {{ device.provider }} <span v-if="device.model">· {{ device.model }}</span>
+                </div>
+                <div class="mt-1 text-sm text-slate-500">IMEI: {{ device.imei }}</div>
+                <div class="mt-1 text-sm text-slate-500">
+                  Vehicle: {{ device.vehicle?.name || '—' }}
                 </div>
                 <div class="mt-1 text-sm text-slate-500">
-                  Plate: {{ vehicle.license_plate || '—' }}
-                </div>
-                <div class="mt-1 text-sm text-slate-500">
-                  Mileage: {{ formatMileage(vehicle.current_mileage) }}
-                </div>
-                <div class="mt-1 text-sm text-slate-500">
-                  Registration: {{ formatDate(vehicle.registration_expiry_date) }}
-                </div>
-                <div class="mt-1 text-sm text-slate-500">
-                  GPS: {{ vehicle.gps_device?.device_name || '—' }}
+                  Last sync: {{ formatDateTime(device.last_sync_at) }}
                 </div>
               </div>
 
               <span
                   class="shrink-0 rounded-full px-2.5 py-1 text-xs font-medium"
-                  :class="statusBadgeClass(vehicle.status)"
+                  :class="device.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'"
               >
-                {{ vehicle.status }}
+                {{ device.is_active ? 'Active' : 'Inactive' }}
               </span>
             </div>
           </div>
@@ -289,7 +254,7 @@ function statusBadgeClass(value: string) {
                 type="button"
                 class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                 :disabled="page <= 1"
-                @click="vehiclesStore.goToPage(page - 1)"
+                @click="gpsDevicesStore.goToPage(page - 1)"
             >
               Previous
             </button>
@@ -298,10 +263,10 @@ function statusBadgeClass(value: string) {
                 type="button"
                 class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                 :disabled="page >= lastPage"
-                @click="vehiclesStore.goToPage(page + 1)"
+                @click="gpsDevicesStore.goToPage(page + 1)"
             >
               Next
-            </button  >
+            </button>
           </div>
         </div>
       </template>
