@@ -11,6 +11,8 @@ import VehicleFormView from '@/views/VehicleFormView.vue'
 import GpsDevicesView from '@/views/GpsDevicesView.vue'
 import GpsDeviceShowView from '@/views/GpsDeviceShowView.vue'
 import GpsDeviceFormView from '@/views/GpsDeviceFormView.vue'
+import RegistrationsView from '@/views/RegistrationsView.vue'
+import RegistrationFormView from '@/views/RegistrationFormView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -90,9 +92,14 @@ const router = createRouter({
         {
           path: 'registrations',
           name: 'registrations',
-          component: PlaceholderView,
-          props: { title: 'Registrations' },
+          component: RegistrationsView,
           meta: { feature: 'registrations' },
+        },
+        {
+          path: 'registrations/:vehicleId/edit',
+          name: 'registration-edit',
+          component: RegistrationFormView,
+          meta: { feature: 'registrations', requiresTenantAdmin: true },
         },
         {
           path: 'users',
