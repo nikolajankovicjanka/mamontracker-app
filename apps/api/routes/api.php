@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\VehicleController;
 use App\Http\Controllers\Api\GpsDeviceController;
+use App\Http\Controllers\Api\RegistrationController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -44,4 +45,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::delete('/gps-devices/{gpsDevice}', [GpsDeviceController::class, 'destroy'])
         ->middleware('tenant.feature:gps_devices');
+
+    Route::get('/registrations', [RegistrationController::class, 'index'])
+        ->middleware('tenant.feature:registrations');
+
+    Route::get('/registrations/{vehicle}', [RegistrationController::class, 'show'])
+        ->middleware('tenant.feature:registrations');
+
+    Route::put('/registrations/{vehicle}', [RegistrationController::class, 'update'])
+        ->middleware('tenant.feature:registrations');
 });
