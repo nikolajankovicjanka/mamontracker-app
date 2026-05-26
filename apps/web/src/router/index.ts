@@ -11,6 +11,9 @@ import VehicleFormView from '@/views/VehicleFormView.vue'
 import GpsDevicesView from '@/views/GpsDevicesView.vue'
 import GpsDeviceShowView from '@/views/GpsDeviceShowView.vue'
 import GpsDeviceFormView from '@/views/GpsDeviceFormView.vue'
+import ServicesView from '@/views/ServicesView.vue'
+import ServiceShowView from '@/views/ServiceShowView.vue'
+import ServiceFormView from '@/views/ServiceFormView.vue'
 import RegistrationsView from '@/views/RegistrationsView.vue'
 import RegistrationFormView from '@/views/RegistrationFormView.vue'
 
@@ -85,9 +88,26 @@ const router = createRouter({
         {
           path: 'services',
           name: 'services',
-          component: PlaceholderView,
-          props: { title: 'Services' },
+          component: ServicesView,
           meta: { feature: 'services' },
+        },
+        {
+          path: 'services/create',
+          name: 'service-create',
+          component: ServiceFormView,
+          meta: { feature: 'services', requiresTenantAdmin: true },
+        },
+        {
+          path: 'services/:id',
+          name: 'service-show',
+          component: ServiceShowView,
+          meta: { feature: 'services' },
+        },
+        {
+          path: 'services/:id/edit',
+          name: 'service-edit',
+          component: ServiceFormView,
+          meta: { feature: 'services', requiresTenantAdmin: true },
         },
         {
           path: 'registrations',
