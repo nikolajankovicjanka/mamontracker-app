@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Alert extends Model
 {
@@ -15,16 +16,12 @@ class Alert extends Model
         'severity',
         'title',
         'message',
-        'is_read',
         'sent_at',
-        'seen_at',
         'meta',
     ];
 
     protected $casts = [
-        'is_read' => 'boolean',
         'sent_at' => 'datetime',
-        'seen_at' => 'datetime',
         'meta' => 'array',
     ];
 
@@ -43,21 +40,8 @@ class Alert extends Model
         return $this->belongsTo(GpsDevice::class);
     }
 
-    public function markAsRead(): void
+    public function userStatuses(): HasMany
     {
-        $this->update([
-            'is_read' => true,
-            'seen_at' => now(),
-        ]);
-    }
-
-    public function isUnread(): bool
-    {
-        return ! $this->is_read;
-    }
-
-    public function isCritical(): bool
-    {
-        return in_array($this->severity, ['high', 'critical'], true);
+        return $this->hasMany(AlertUserStatus::class);
     }
 }

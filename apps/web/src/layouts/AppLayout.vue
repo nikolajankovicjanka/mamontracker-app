@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { storeToRefs } from 'pinia'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import {
   LayoutDashboard,
@@ -18,14 +19,26 @@ import {
   LogOut,
   ChevronRight,
   Truck,
+  CheckCheck,
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
+import { useAlertsStore, type AlertItem } from '@/stores/alerts'
 
 const auth = useAuthStore()
+const alertsStore = useAlertsStore()
 const router = useRouter()
 const route = useRoute()
 
 const mobileMenuOpen = ref(false)
+const notificationsOpen = ref(false)
+const notificationsPanel = ref<HTMLElement | null>(null)
+
+const {
+  items: alerts,
+  unreadCount,
+  loading: alertsLoading,
+  markingAllRead,
+} = storeToRefs(alertsStore)
 
 const tenantName = computed(() => auth.tenant?.name ?? 'Tenant')
 
@@ -58,6 +71,11 @@ const userInitials = computed(() => {
       .join('')
 })
 
+const unreadBadgeLabel = computed(() => {
+  if (unreadCount.value > 9) return '9+'
+  return String(unreadCount.value)
+})
+
 const navigation = computed(() => {
   const features = auth.tenant?.features ?? {}
 
@@ -80,8 +98,64 @@ function isActive(path: string) {
   return route.path.startsWith(path)
 }
 
+function notificationSeverityClass(value: string) {
+  if (value === 'high') return 'bg-rose-50 text-rose-700 ring-rose-200'
+  if (value === 'medium') return 'bg-amber-50 text-amber-700 ring-amber-200'
+  if (value === 'low') return 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+  return 'bg-slate-100 text-slate-700 ring-slate-200'
+}
+
+function formatNotificationDate(date: string | null) {
+  if (!date) return '—'
+
+  return new Intl.DateTimeFormat('sr-Latn-RS', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(date))
+}
+
+async function toggleNotifications() {
+  notificationsOpen.value = !notificationsOpen.value
+
+  if (notificationsOpen.value) {
+    await alertsStore.fetchAlerts('all', 8)
+  }
+}
+
+async function handleAlertClick(item: AlertItem) {
+  if (!item.is_read) {
+    await alertsStore.markAsRead(item.id)
+  }
+
+  notificationsOpen.value = false
+
+  if (item.route_name) {
+    await router.push({
+      name: item.route_name,
+      params: item.route_params ?? {},
+    })
+  }
+}
+
+async function handleMarkAllAsRead() {
+  await alertsStore.markAllAsRead()
+}
+
+function handleClickOutside(event: MouseEvent) {
+  const target = event.target as Node
+
+  if (notificationsPanel.value && !notificationsPanel.value.contains(target)) {
+    notificationsOpen.value = false
+  }
+}
+
 async function handleLogout() {
   mobileMenuOpen.value = false
+  notificationsOpen.value = false
+  alertsStore.clearAlerts()
   await auth.logout()
   await router.replace({ name: 'login' })
 }
@@ -89,6 +163,18 @@ async function handleLogout() {
 function closeMobileMenu() {
   mobileMenuOpen.value = false
 }
+
+onMounted(async () => {
+  document.addEventListener('click', handleClickOutside)
+
+  if (auth.isAuthenticated) {
+    await alertsStore.fetchUnreadCount()
+  }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <template>
@@ -249,13 +335,94 @@ function closeMobileMenu() {
                   <span>System Online</span>
                 </div>
 
-                <button
-                    type="button"
-                    class="relative rounded-2xl border border-slate-200 bg-white p-3 text-slate-600 shadow-sm hover:bg-slate-50"
-                >
-                  <Bell class="h-5 w-5" />
-                  <span class="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-rose-500" />
-                </button>
+                <div ref="notificationsPanel" class="relative">
+                  <button
+                      type="button"
+                      class="relative rounded-2xl border border-slate-200 bg-white p-3 text-slate-600 shadow-sm hover:bg-slate-50"
+                      @click.stop="toggleNotifications"
+                  >
+                    <Bell class="h-5 w-5" />
+
+                    <span
+                        v-if="unreadCount > 0"
+                        class="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white"
+                    >
+      {{ unreadBadgeLabel }}
+    </span>
+                  </button>
+
+                  <div
+                      v-if="notificationsOpen"
+                      class="fixed left-4 right-4 top-20 z-50 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl sm:absolute sm:left-auto sm:right-0 sm:top-14 sm:w-[380px]"
+                  >
+                    <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                      <div>
+                        <div class="text-sm font-semibold text-slate-900">Obavještenja</div>
+                        <div class="text-xs text-slate-500">
+                          Nepročitano: {{ unreadCount }}
+                        </div>
+                      </div>
+
+                      <button
+                          type="button"
+                          class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                          :disabled="markingAllRead || unreadCount === 0"
+                          @click.stop="handleMarkAllAsRead"
+                      >
+                        <CheckCheck class="h-4 w-4" />
+                        <span>Označi sve</span>
+                      </button>
+                    </div>
+
+                    <div v-if="alertsLoading" class="p-5 text-sm text-slate-500">
+                      Učitavanje obavještenja...
+                    </div>
+
+                    <div v-else-if="!alerts.length" class="p-5 text-sm text-slate-500">
+                      Nema obavještenja.
+                    </div>
+
+                    <div v-else class="max-h-[65vh] overflow-y-auto sm:max-h-[420px]">
+                      <button
+                          v-for="item in alerts"
+                          :key="item.id"
+                          type="button"
+                          class="w-full border-b border-slate-100 px-5 py-4 text-left transition hover:bg-slate-50 last:border-b-0"
+                          @click.stop="handleAlertClick(item)"
+                      >
+                        <div class="flex items-start gap-3">
+                          <div
+                              class="mt-0.5 rounded-full px-2.5 py-1 text-[11px] font-medium ring-1"
+                              :class="notificationSeverityClass(item.severity)"
+                          >
+                            {{ item.type }}
+                          </div>
+
+                          <div class="min-w-0 flex-1">
+                            <div class="flex items-start justify-between gap-3">
+                              <div class="font-medium text-slate-900">
+                                {{ item.title }}
+                              </div>
+
+                              <span
+                                  v-if="!item.is_read"
+                                  class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500"
+                              />
+                            </div>
+
+                            <div class="mt-1 text-sm text-slate-500">
+                              {{ item.message }}
+                            </div>
+
+                            <div class="mt-2 text-xs text-slate-400">
+                              {{ formatNotificationDate(item.sent_at) }}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
 
                 <div class="hidden h-10 w-px bg-slate-200 lg:block" />
 
