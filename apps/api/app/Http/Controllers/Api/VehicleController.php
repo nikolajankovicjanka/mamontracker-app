@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Vehicle;
+use App\Models\VehicleAssignment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -35,7 +36,14 @@ class VehicleController extends Controller
             ->where('tenant_id', $tenant->id)
             ->with([
                 'activeGpsDevice:id,vehicle_id,device_name,is_active,last_sync_at',
+                'activeAssignments' => fn ($query) => $query
+                    ->with([
+                        'user:id,name,email,role,is_active',
+                        'assignedBy:id,name',
+                    ])
+                    ->latest('assigned_from'),
             ])
+            ->withCount('activeAssignments')
             ->when($search, function ($query, $search) {
                 $query->where(function ($subQuery) use ($search) {
                     $subQuery
@@ -73,7 +81,19 @@ class VehicleController extends Controller
 
         $vehicle->load([
             'activeGpsDevice:id,vehicle_id,device_name,is_active,last_sync_at,imei,traccar_device_id,model,provider',
-        ]);
+            'activeAssignments' => fn ($query) => $query
+                ->with([
+                    'user:id,name,email,role,is_active',
+                    'assignedBy:id,name',
+                ])
+                ->latest('assigned_from'),
+            'assignments' => fn ($query) => $query
+                ->with([
+                    'user:id,name,email,role,is_active',
+                    'assignedBy:id,name',
+                ])
+                ->latest('assigned_from'),
+        ])->loadCount('activeAssignments');
 
         return response()->json([
             'data' => $this->transformVehicle($vehicle),
@@ -106,7 +126,7 @@ class VehicleController extends Controller
 
         $vehicle->load([
             'activeGpsDevice:id,vehicle_id,device_name,is_active,last_sync_at',
-        ]);
+        ])->loadCount('activeAssignments');
 
         return response()->json([
             'message' => 'Vehicle created successfully.',
@@ -143,7 +163,7 @@ class VehicleController extends Controller
 
         $vehicle->load([
             'activeGpsDevice:id,vehicle_id,device_name,is_active,last_sync_at',
-        ]);
+        ])->loadCount('activeAssignments');
 
         return response()->json([
             'message' => 'Vehicle updated successfully.',
@@ -223,6 +243,7 @@ class VehicleController extends Controller
             'last_known_lng' => $vehicle->last_known_lng !== null ? (float) $vehicle->last_known_lng : null,
             'last_position_at' => $vehicle->last_position_at?->toIso8601String(),
             'last_speed_kph' => $vehicle->last_speed_kph !== null ? (float) $vehicle->last_speed_kph : null,
+            'active_assignments_count' => $vehicle->active_assignments_count ?? null,
             'gps_device' => $vehicle->activeGpsDevice ? [
                 'device_name' => $vehicle->activeGpsDevice->device_name,
                 'model' => $vehicle->activeGpsDevice->model ?? null,
@@ -231,6 +252,42 @@ class VehicleController extends Controller
                 'traccar_device_id' => $vehicle->activeGpsDevice->traccar_device_id ?? null,
                 'is_active' => $vehicle->activeGpsDevice->is_active,
                 'last_sync_at' => $vehicle->activeGpsDevice->last_sync_at?->toIso8601String(),
+            ] : null,
+            'active_assignments' => $vehicle->relationLoaded('activeAssignments')
+                ? $vehicle->activeAssignments->map(fn (VehicleAssignment $assignment) => $this->transformAssignment($assignment))->values()
+                : [],
+            'assignment_history' => $vehicle->relationLoaded('assignments')
+                ? $vehicle->assignments->map(fn (VehicleAssignment $assignment) => $this->transformAssignment($assignment))->values()
+                : [],
+        ];
+    }
+
+    private function transformAssignment(VehicleAssignment $assignment): array
+    {
+        return [
+            'id' => $assignment->id,
+            'tenant_id' => $assignment->tenant_id,
+            'vehicle_id' => $assignment->vehicle_id,
+            'user_id' => $assignment->user_id,
+            'assigned_by' => $assignment->assigned_by,
+            'assignment_type' => $assignment->assignment_type,
+            'assigned_from' => $assignment->assigned_from?->toIso8601String(),
+            'assigned_until' => $assignment->assigned_until?->toIso8601String(),
+            'unassigned_at' => $assignment->unassigned_at?->toIso8601String(),
+            'status' => $assignment->status,
+            'notes' => $assignment->notes,
+            'start_mileage' => $assignment->start_mileage !== null ? (float) $assignment->start_mileage : null,
+            'end_mileage' => $assignment->end_mileage !== null ? (float) $assignment->end_mileage : null,
+            'user' => $assignment->user ? [
+                'id' => $assignment->user->id,
+                'name' => $assignment->user->name,
+                'email' => $assignment->user->email,
+                'role' => $assignment->user->role,
+                'is_active' => (bool) $assignment->user->is_active,
+            ] : null,
+            'assigned_by_user' => $assignment->assignedBy ? [
+                'id' => $assignment->assignedBy->id,
+                'name' => $assignment->assignedBy->name,
             ] : null,
         ];
     }

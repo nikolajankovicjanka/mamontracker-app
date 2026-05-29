@@ -2,6 +2,33 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import api from '@/lib/axios'
 
+export type VehicleAssignmentItem = {
+    id: number
+    tenant_id: number
+    vehicle_id: number
+    user_id: number
+    assigned_by: number | null
+    assignment_type: 'primary' | 'secondary' | 'temporary'
+    assigned_from: string | null
+    assigned_until: string | null
+    unassigned_at: string | null
+    status: 'active' | 'ended' | 'cancelled'
+    notes: string | null
+    start_mileage: number | null
+    end_mileage: number | null
+    user: {
+        id: number
+        name: string
+        email: string
+        role: string
+        is_active: boolean
+    } | null
+    assigned_by_user: {
+        id: number
+        name: string
+    } | null
+}
+
 export type VehicleItem = {
     id: number
     name: string
@@ -18,6 +45,9 @@ export type VehicleItem = {
     last_known_lng: number | null
     last_position_at: string | null
     last_speed_kph: number | null
+    active_assignments_count: number | null
+    active_assignments: VehicleAssignmentItem[]
+    assignment_history: VehicleAssignmentItem[]
     gps_device: {
         device_name: string
         model?: string | null

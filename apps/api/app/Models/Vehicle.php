@@ -61,6 +61,18 @@ class Vehicle extends Model
         return $this->hasMany(Alert::class);
     }
 
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(VehicleAssignment::class);
+    }
+
+    public function activeAssignments(): HasMany
+    {
+        return $this->hasMany(VehicleAssignment::class)
+            ->where('status', 'active')
+            ->whereNull('unassigned_at');
+    }
+
     public function isActive(): bool
     {
         return $this->status === 'active';

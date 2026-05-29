@@ -22,6 +22,7 @@ class User extends Authenticatable implements FilamentUser
         'email',
         'password',
         'role',
+        'permissions',
         'is_active',
         'last_login_at',
     ];
@@ -36,11 +37,34 @@ class User extends Authenticatable implements FilamentUser
         'password' => 'hashed',
         'is_active' => 'boolean',
         'last_login_at' => 'datetime',
+        'permissions' => 'array',
     ];
 
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    public function alertStatuses(): HasMany
+    {
+        return $this->hasMany(AlertUserStatus::class);
+    }
+
+    public function vehicleAssignments(): HasMany
+    {
+        return $this->hasMany(VehicleAssignment::class);
+    }
+
+    public function createdVehicleAssignments(): HasMany
+    {
+        return $this->hasMany(VehicleAssignment::class, 'assigned_by');
+    }
+
+    public function activeVehicleAssignments(): HasMany
+    {
+        return $this->hasMany(VehicleAssignment::class)
+            ->where('status', 'active')
+            ->whereNull('unassigned_at');
     }
 
     public function isPlatformSuperAdmin(): bool
@@ -51,11 +75,6 @@ class User extends Authenticatable implements FilamentUser
     public function isTenantAdmin(): bool
     {
         return $this->role === 'tenant_admin';
-    }
-
-    public function alertStatuses(): HasMany
-    {
-        return $this->hasMany(AlertUserStatus::class);
     }
 
     public function isTenantUser(): bool
@@ -89,6 +108,61 @@ class User extends Authenticatable implements FilamentUser
     public function canManageTenantData(): bool
     {
         return $this->isPlatformSuperAdmin() || $this->isTenantAdmin();
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        if ($this->isPlatformSuperAdmin()) {
+            return true;
+        }
+
+        if ($this->isTenantAdmin()) {
+            return true;
+        }
+
+        $permissions = $this->permissions ?? [];
+
+        return (bool) ($permissions[$permission] ?? false);
+    }
+
+    public function canManageUsers(): bool
+    {
+        return $this->hasPermission('can_manage_users');
+    }
+
+    public function canAssignVehicles(): bool
+    {
+        return $this->hasPermission('can_assign_vehicles');
+    }
+
+    public function canManageServices(): bool
+    {
+        return $this->hasPermission('can_manage_services');
+    }
+
+    public function canManageRegistrations(): bool
+    {
+        return $this->hasPermission('can_manage_registrations');
+    }
+
+    public function canManageGpsDevices(): bool
+    {
+        return $this->hasPermission('can_manage_gps_devices');
+    }
+
+    public function canLogFuel(): bool
+    {
+        return $this->hasPermission('can_log_fuel');
+    }
+
+    public function canViewReports(): bool
+    {
+        return $this->hasPermission('can_view_reports');
+    }
+
+    public function canViewAlerts(): bool
+    {
+        return $this->hasPermission('can_view_alerts');
     }
 
     public function canAccessPanel(Panel $panel): bool

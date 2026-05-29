@@ -55,6 +55,21 @@ class Tenant extends Model
         return $this->hasMany(GpsDevice::class);
     }
 
+    public function vehicleServices(): HasMany
+    {
+        return $this->hasMany(VehicleService::class);
+    }
+
+    public function vehicleAssignments(): HasMany
+    {
+        return $this->hasMany(VehicleAssignment::class);
+    }
+
+    public function alerts(): HasMany
+    {
+        return $this->hasMany(Alert::class);
+    }
+
     public function featureMap(): array
     {
         $plan = $this->plan ?? 'basic';
@@ -65,16 +80,6 @@ class Tenant extends Model
     public function hasFeature(string $feature): bool
     {
         return (bool) data_get($this->featureMap(), $feature, false);
-    }
-
-    public function vehicleServices(): HasMany
-    {
-        return $this->hasMany(VehicleService::class);
-    }
-
-    public function alerts(): HasMany
-    {
-        return $this->hasMany(Alert::class);
     }
 
     public function isActive(): bool
