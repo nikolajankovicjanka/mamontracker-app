@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\VehicleController;
 use App\Http\Controllers\Api\GpsDeviceController;
 use App\Http\Controllers\Api\VehicleServiceController;
 use App\Http\Controllers\Api\RegistrationController;
+use App\Http\Controllers\Api\AlertController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -70,4 +71,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::put('/registrations/{vehicle}', [RegistrationController::class, 'update'])
         ->middleware('tenant.feature:registrations');
+
+    Route::get('/alerts', [AlertController::class, 'index']);
+    Route::get('/alerts/unread-count', [AlertController::class, 'unreadCount']);
+    Route::post('/alerts/read-all', [AlertController::class, 'markAllAsRead']);
+    Route::post('/alerts/{alert}/read', [AlertController::class, 'markAsRead']);
 });
