@@ -16,6 +16,9 @@ import ServiceShowView from '@/views/ServiceShowView.vue'
 import ServiceFormView from '@/views/ServiceFormView.vue'
 import RegistrationsView from '@/views/RegistrationsView.vue'
 import RegistrationFormView from '@/views/RegistrationFormView.vue'
+import UsersView from '@/views/UsersView.vue'
+import UserFormView from '@/views/UserFormView.vue'
+import UserShowView from '@/views/UserShowView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -124,9 +127,26 @@ const router = createRouter({
         {
           path: 'users',
           name: 'users',
-          component: PlaceholderView,
-          props: { title: 'Users' },
+          component: UsersView,
           meta: { feature: 'users' },
+        },
+        {
+          path: 'users/create',
+          name: 'user-create',
+          component: UserFormView,
+          meta: { feature: 'users', requiresTenantAdmin: true },
+        },
+        {
+          path: 'users/:id',
+          name: 'user-show',
+          component: UserShowView,
+          meta: { feature: 'users' },
+        },
+        {
+          path: 'users/:id/edit',
+          name: 'user-edit',
+          component: UserFormView,
+          meta: { feature: 'users', requiresTenantAdmin: true },
         },
         {
           path: 'reports',

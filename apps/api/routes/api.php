@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\GpsDeviceController;
 use App\Http\Controllers\Api\VehicleServiceController;
 use App\Http\Controllers\Api\RegistrationController;
 use App\Http\Controllers\Api\AlertController;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\VehicleAssignmentController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -76,4 +78,34 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/alerts/unread-count', [AlertController::class, 'unreadCount']);
     Route::post('/alerts/read-all', [AlertController::class, 'markAllAsRead']);
     Route::post('/alerts/{alert}/read', [AlertController::class, 'markAsRead']);
+
+    Route::get('/users', [UserController::class, 'index'])
+        ->middleware('tenant.feature:users');
+
+    Route::get('/users/{user}', [UserController::class, 'show'])
+        ->middleware('tenant.feature:users');
+
+    Route::post('/users', [UserController::class, 'store'])
+        ->middleware('tenant.feature:users');
+
+    Route::put('/users/{user}', [UserController::class, 'update'])
+        ->middleware('tenant.feature:users');
+
+    Route::patch('/users/{user}/status', [UserController::class, 'updateStatus'])
+        ->middleware('tenant.feature:users');
+
+    Route::get('/vehicle-assignments', [VehicleAssignmentController::class, 'index'])
+        ->middleware(['tenant.feature:users', 'tenant.feature:vehicles']);
+
+    Route::get('/vehicle-assignments/{vehicleAssignment}', [VehicleAssignmentController::class, 'show'])
+        ->middleware(['tenant.feature:users', 'tenant.feature:vehicles']);
+
+    Route::post('/vehicle-assignments', [VehicleAssignmentController::class, 'store'])
+        ->middleware(['tenant.feature:users', 'tenant.feature:vehicles']);
+
+    Route::put('/vehicle-assignments/{vehicleAssignment}', [VehicleAssignmentController::class, 'update'])
+        ->middleware(['tenant.feature:users', 'tenant.feature:vehicles']);
+
+    Route::post('/vehicle-assignments/{vehicleAssignment}/end', [VehicleAssignmentController::class, 'end'])
+        ->middleware(['tenant.feature:users', 'tenant.feature:vehicles']);
 });

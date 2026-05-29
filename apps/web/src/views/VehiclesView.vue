@@ -73,6 +73,17 @@ function statusBadgeClass(value: string) {
   if (value === 'inactive') return 'bg-rose-50 text-rose-700'
   return 'bg-amber-50 text-amber-700'
 }
+
+function activeAssigneesLabel(vehicle: (typeof items.value)[number]) {
+  if (!vehicle.active_assignments?.length) {
+    return '—'
+  }
+
+  return vehicle.active_assignments
+      .map((assignment) => assignment.user?.name)
+      .filter(Boolean)
+      .join(', ')
+}
 </script>
 
 <template>
@@ -166,14 +177,15 @@ function statusBadgeClass(value: string) {
       </div>
 
       <template v-else>
-        <div class="hidden overflow-x-auto xl:block">
+        <div class="hidden overflow-x-auto 2xl:block">
           <table class="min-w-full text-left">
             <thead>
             <tr class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
               <th class="pb-3 font-medium">Vozilo</th>
+              <th class="pb-3 font-medium">Tablice</th>
+              <th class="pb-3 font-medium">Kilometraža</th>
               <th class="pb-3 font-medium">Registracija</th>
-              <th class="pb-3 font-medium">Kilometraza</th>
-              <th class="pb-3 font-medium">Registracija</th>
+              <th class="pb-3 font-medium">Zaduženi korisnici</th>
               <th class="pb-3 font-medium">GPS Device</th>
               <th class="pb-3 font-medium">Last sync</th>
               <th class="pb-3 font-medium">Status</th>
@@ -212,6 +224,15 @@ function statusBadgeClass(value: string) {
               </td>
 
               <td class="py-4 text-slate-600">
+                <div class="font-medium text-slate-900">
+                  {{ activeAssigneesLabel(vehicle) }}
+                </div>
+                <div class="mt-1 text-xs text-slate-500">
+                  {{ vehicle.active_assignments_count ?? 0 }} aktivnih
+                </div>
+              </td>
+
+              <td class="py-4 text-slate-600">
                 <template v-if="vehicle.gps_device">
                   <div class="font-medium text-slate-900">
                     {{ vehicle.gps_device.device_name }}
@@ -242,7 +263,7 @@ function statusBadgeClass(value: string) {
           </table>
         </div>
 
-        <div class="space-y-3 xl:hidden">
+        <div class="space-y-3 2xl:hidden">
           <div
               v-for="vehicle in items"
               :key="vehicle.id"
@@ -263,6 +284,9 @@ function statusBadgeClass(value: string) {
                 </div>
                 <div class="mt-1 text-sm text-slate-500">
                   Registration: {{ formatDate(vehicle.registration_expiry_date) }}
+                </div>
+                <div class="mt-1 text-sm text-slate-500">
+                  Assigned: {{ activeAssigneesLabel(vehicle) }}
                 </div>
                 <div class="mt-1 text-sm text-slate-500">
                   GPS: {{ vehicle.gps_device?.device_name || '—' }}
@@ -301,7 +325,7 @@ function statusBadgeClass(value: string) {
                 @click="vehiclesStore.goToPage(page + 1)"
             >
               Next
-            </button  >
+            </button>
           </div>
         </div>
       </template>
