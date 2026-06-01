@@ -4,7 +4,7 @@ import { pinia } from '@/stores'
 import AppLayout from '@/layouts/AppLayout.vue'
 import LoginView from '@/views/LoginView.vue'
 import DashboardView from '@/views/DashboardView.vue'
-import PlaceholderView from '@/views/PlaceholderView.vue'
+import ReportsView from '@/views/ReportsView.vue'
 import VehiclesView from '@/views/VehiclesView.vue'
 import VehicleShowView from '@/views/VehicleShowView.vue'
 import VehicleFormView from '@/views/VehicleFormView.vue'
@@ -151,7 +151,7 @@ const router = createRouter({
         {
           path: 'reports',
           name: 'reports',
-          component: PlaceholderView,
+          component: ReportsView,
           props: { title: 'Reports' },
           meta: { feature: 'reports' },
         },
