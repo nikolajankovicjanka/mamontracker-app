@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\RegistrationController;
 use App\Http\Controllers\Api\AlertController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VehicleAssignmentController;
+use App\Http\Controllers\Api\ReportsController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -108,4 +109,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/vehicle-assignments/{vehicleAssignment}/end', [VehicleAssignmentController::class, 'end'])
         ->middleware(['tenant.feature:users', 'tenant.feature:vehicles']);
+
+    Route::get('/reports/summary', [ReportsController::class, 'summary'])
+        ->middleware('tenant.feature:reports');
+
+    Route::get('/reports/{report}', [ReportsController::class, 'dataset'])
+        ->middleware('tenant.feature:reports');
+
+    Route::get('/reports/{report}/excel', [ReportsController::class, 'exportExcel'])
+        ->middleware('tenant.feature:reports');
+
+    Route::get('/reports/{report}/pdf', [ReportsController::class, 'exportPdf'])
+        ->middleware('tenant.feature:reports');
 });
