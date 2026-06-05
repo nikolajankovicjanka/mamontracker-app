@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\AlertController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VehicleAssignmentController;
 use App\Http\Controllers\Api\ReportsController;
+use App\Http\Controllers\Api\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -121,4 +122,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/reports/{report}/pdf', [ReportsController::class, 'exportPdf'])
         ->middleware('tenant.feature:reports');
+
+    Route::get('/settings', [SettingsController::class, 'show']);
+    Route::put('/settings/tenant', [SettingsController::class, 'updateTenant'])
+        ->middleware('tenant.feature:users');
+    Route::put('/settings/preferences', [SettingsController::class, 'updatePreferences']);
 });

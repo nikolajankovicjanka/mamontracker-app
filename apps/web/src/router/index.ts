@@ -19,6 +19,7 @@ import RegistrationFormView from '@/views/RegistrationFormView.vue'
 import UsersView from '@/views/UsersView.vue'
 import UserFormView from '@/views/UserFormView.vue'
 import UserShowView from '@/views/UserShowView.vue'
+import SettingsView from '@/views/SettingsView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -154,6 +155,12 @@ const router = createRouter({
           component: ReportsView,
           props: { title: 'Reports' },
           meta: { feature: 'reports' },
+        },
+        {
+          path: 'settings',
+          name: 'settings',
+          component: SettingsView,
+          meta: { feature: 'users' },
         },
       ],
     },
