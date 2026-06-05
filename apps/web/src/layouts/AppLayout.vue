@@ -249,15 +249,25 @@ onBeforeUnmount(() => {
             </div>
 
             <div class="space-y-1.5">
-              <button
-                  type="button"
-                  class="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+              <RouterLink
+                  :to="{ name: 'settings' }"
+                  class="group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200"
+                  :class="isActive('/settings')
+                  ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'"
+                  @click="closeMobileMenu"
               >
-                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+                <div
+                    class="flex h-9 w-9 items-center justify-center rounded-xl transition"
+                    :class="isActive('/settings')
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700'"
+                >
                   <Settings class="h-4.5 w-4.5" />
                 </div>
+
                 <span>Settings</span>
-              </button>
+              </RouterLink>
 
               <button
                   type="button"
@@ -347,8 +357,8 @@ onBeforeUnmount(() => {
                         v-if="unreadCount > 0"
                         class="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white"
                     >
-      {{ unreadBadgeLabel }}
-    </span>
+                      {{ unreadBadgeLabel }}
+                    </span>
                   </button>
 
                   <div
