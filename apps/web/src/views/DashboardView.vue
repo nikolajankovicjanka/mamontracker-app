@@ -11,6 +11,7 @@ import {
   MapPinned,
   BellRing,
 } from 'lucide-vue-next'
+import FleetMap from '@/components/FleetMap.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useDashboardStore } from '@/stores/dashboard'
 
@@ -36,29 +37,36 @@ const offlinePercentage = computed(() => {
   return Math.round((overview.value.offline_vehicles / overview.value.total_vehicles) * 100)
 })
 
-const europeBounds = {
-  minLat: 35,
-  maxLat: 72,
-  minLng: -10,
-  maxLng: 40,
-}
+const mockMapVehicles = [
+  {
+    id: 1001,
+    name: 'Audi A4 Test',
+    license_plate: 'A12-K-345',
+    lat: 44.7569,
+    lng: 19.2164,
+    status: 'active',
+    online: true,
+    last_position_at: new Date().toISOString(),
+  },
+  {
+    id: 1002,
+    name: 'VW Crafter Test',
+    license_plate: 'M45-T-778',
+    lat: 44.5384,
+    lng: 18.6671,
+    status: 'active',
+    online: false,
+    last_position_at: new Date().toISOString(),
+  },
+]
 
-function markerStyle(lat: number, lng: number) {
-  const x = ((lng - europeBounds.minLng) / (europeBounds.maxLng - europeBounds.minLng)) * 100
-  const y = ((europeBounds.maxLat - lat) / (europeBounds.maxLat - europeBounds.minLat)) * 100
-
-  const clampedX = Math.min(Math.max(x, 4), 96)
-  const clampedY = Math.min(Math.max(y, 6), 94)
-
-  return {
-    left: `${clampedX}%`,
-    top: `${clampedY}%`,
+const mapVehicles = computed(() => {
+  if (summary.value?.map_vehicles?.length) {
+    return summary.value.map_vehicles
   }
-}
 
-function markerDelay(id: number) {
-  return `${(id % 7) * 0.18}s`
-}
+  return mockMapVehicles
+})
 
 function formatDate(date: string | null) {
   if (!date) return '—'
@@ -147,7 +155,7 @@ function activityBadgeClass(severity: string | null) {
       <div class="text-sm text-slate-500">Učitavanje dashboarda...</div>
     </div>
 
-    <template v-else-if="summary && overview">
+    <template v-else>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-6">
           <div class="mb-5 flex items-center justify-between">
@@ -166,7 +174,7 @@ function activityBadgeClass(severity: string | null) {
           </div>
 
           <div class="text-3xl font-bold text-slate-900 sm:text-4xl">
-            {{ overview.total_vehicles }}
+            {{ overview?.total_vehicles ?? 0 }}
           </div>
           <div class="mt-2 text-sm text-slate-500">
             Ukupno vozila
@@ -194,7 +202,7 @@ function activityBadgeClass(severity: string | null) {
           </div>
 
           <div class="text-3xl font-bold text-slate-900 sm:text-4xl">
-            {{ overview.online_vehicles }}
+            {{ overview?.online_vehicles ?? 0 }}
           </div>
           <div class="mt-2 text-sm text-slate-500">
             Online vozila
@@ -225,7 +233,7 @@ function activityBadgeClass(severity: string | null) {
           </div>
 
           <div class="text-3xl font-bold text-slate-900 sm:text-4xl">
-            {{ overview.offline_vehicles }}
+            {{ overview?.offline_vehicles ?? 0 }}
           </div>
           <div class="mt-2 text-sm text-slate-500">
             Offline vozila
@@ -256,7 +264,7 @@ function activityBadgeClass(severity: string | null) {
           </div>
 
           <div class="text-3xl font-bold text-slate-900 sm:text-4xl">
-            {{ overview.expiring_registrations_count }}
+            {{ overview?.expiring_registrations_count ?? 0 }}
           </div>
           <div class="mt-2 text-sm text-slate-500">
             Ističu uskoro
@@ -265,7 +273,7 @@ function activityBadgeClass(severity: string | null) {
           <div class="mt-6 h-1.5 overflow-hidden rounded-full bg-slate-100">
             <div
                 class="h-full rounded-full bg-amber-500 transition-all duration-500"
-                :style="{ width: `${Math.min((overview.expiring_registrations_count / Math.max(overview.total_vehicles, 1)) * 100, 100)}%` }"
+                :style="{ width: `${Math.min((((overview?.expiring_registrations_count ?? 0) / Math.max((overview?.total_vehicles ?? 1), 1)) * 100), 100)}%` }"
             />
           </div>
         </div>
@@ -317,46 +325,17 @@ function activityBadgeClass(severity: string | null) {
               class="relative overflow-hidden rounded-3xl border border-slate-200 bg-sky-50"
               :class="mapExpanded ? 'h-[calc(100vh-11rem)]' : 'h-[300px] sm:h-[380px]'"
           >
-            <div class="absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.11)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.11)_1px,transparent_1px)] bg-[size:48px_48px]" />
-            <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.10),transparent_24%),radial-gradient(circle_at_60%_40%,rgba(37,99,235,0.10),transparent_28%),radial-gradient(circle_at_50%_72%,rgba(14,165,233,0.10),transparent_22%)]" />
-
-            <div class="absolute left-4 top-4 z-10 rounded-2xl border border-white/70 bg-white/80 px-3 py-2 text-xs font-medium text-slate-600 shadow-sm backdrop-blur">
+            <div class="absolute left-4 top-4 z-10 rounded-2xl border border-white/70 bg-white/90 px-3 py-2 text-xs font-medium text-slate-600 shadow-sm backdrop-blur">
               <div class="flex items-center gap-2">
                 <MapPinned class="h-4 w-4 text-blue-600" />
-                <span>Evropa · Fleet tracking</span>
+                <span>Fleet tracking mapa</span>
               </div>
             </div>
 
-            <template v-if="summary.map_vehicles.length">
-              <div
-                  v-for="vehicle in summary.map_vehicles"
-                  :key="vehicle.id"
-                  class="absolute -translate-x-1/2 -translate-y-1/2 marker-float"
-                  :style="{ ...markerStyle(vehicle.lat, vehicle.lng), animationDelay: markerDelay(vehicle.id) }"
-              >
-                <span
-                    class="marker-halo absolute inset-0 rounded-full"
-                    :class="vehicle.online ? 'bg-emerald-400/30' : 'bg-rose-400/30'"
-                />
-
-                <div
-                    class="relative flex h-11 w-11 items-center justify-center rounded-full border-2 border-white text-white shadow-lg ring-4"
-                    :class="vehicle.online
-                    ? 'bg-emerald-500 ring-emerald-100'
-                    : 'bg-rose-500 ring-rose-100'"
-                    :title="`${vehicle.name} (${vehicle.license_plate})`"
-                >
-                  <CarFront class="h-5 w-5" />
-                </div>
-              </div>
-            </template>
-
-            <div
-                v-else
-                class="absolute inset-0 flex items-center justify-center px-4 text-center text-sm text-slate-500"
-            >
-              Pozicije vozila još nisu dostupne.
-            </div>
+            <FleetMap
+                :vehicles="mapVehicles"
+                :expanded="mapExpanded"
+            />
           </div>
         </div>
 
@@ -367,13 +346,13 @@ function activityBadgeClass(severity: string | null) {
           <div class="mb-5 flex items-center justify-between">
             <h2 class="text-lg font-semibold text-slate-900">Registracije koje ističu</h2>
             <span class="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
-              Prikazano: {{ summary.expiring_registrations.length }}
+              Prikazano: {{ summary?.expiring_registrations?.length ?? 0 }}
             </span>
           </div>
 
           <div class="space-y-3">
             <div
-                v-for="vehicle in summary.expiring_registrations"
+                v-for="vehicle in summary?.expiring_registrations ?? []"
                 :key="vehicle.id"
                 class="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 transition hover:bg-amber-50"
             >
@@ -399,7 +378,7 @@ function activityBadgeClass(severity: string | null) {
             </div>
 
             <div
-                v-if="!summary.expiring_registrations.length"
+                v-if="!(summary?.expiring_registrations?.length)"
                 class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500"
             >
               Nema registracija koje uskoro ističu.
@@ -418,7 +397,7 @@ function activityBadgeClass(severity: string | null) {
               <div>
                 <h2 class="text-lg font-semibold text-slate-900">Vozila sa najvećom kilometražom</h2>
                 <div class="text-sm text-slate-400">
-                  Top {{ summary.highest_mileage_vehicles.length }}
+                  Top {{ summary?.highest_mileage_vehicles?.length ?? 0 }}
                 </div>
               </div>
             </div>
@@ -436,7 +415,7 @@ function activityBadgeClass(severity: string | null) {
               </thead>
               <tbody>
               <tr
-                  v-for="vehicle in summary.highest_mileage_vehicles"
+                  v-for="vehicle in summary?.highest_mileage_vehicles ?? []"
                   :key="vehicle.id"
                   class="border-b border-slate-100 last:border-b-0"
               >
@@ -466,7 +445,7 @@ function activityBadgeClass(severity: string | null) {
 
           <div class="space-y-3 md:hidden">
             <div
-                v-for="vehicle in summary.highest_mileage_vehicles"
+                v-for="vehicle in summary?.highest_mileage_vehicles ?? []"
                 :key="vehicle.id"
                 class="rounded-2xl border border-slate-200 p-4"
             >
@@ -513,7 +492,7 @@ function activityBadgeClass(severity: string | null) {
 
           <div class="space-y-3">
             <div
-                v-for="item in summary.recent_activity"
+                v-for="item in summary?.recent_activity ?? []"
                 :key="item.id"
                 class="rounded-2xl border border-slate-100 bg-slate-50 p-4 transition hover:bg-slate-100/70"
             >
@@ -540,7 +519,7 @@ function activityBadgeClass(severity: string | null) {
             </div>
 
             <div
-                v-if="!summary.recent_activity.length"
+                v-if="!(summary?.recent_activity?.length)"
                 class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500"
             >
               Još nema nedavnih aktivnosti.
@@ -551,37 +530,3 @@ function activityBadgeClass(severity: string | null) {
     </template>
   </div>
 </template>
-
-<style scoped>
-.marker-float {
-  animation: markerFloat 3.2s ease-in-out infinite;
-}
-
-.marker-halo {
-  animation: markerPulse 2.2s ease-out infinite;
-}
-
-@keyframes markerFloat {
-  0%, 100% {
-    transform: translate(-50%, -50%) translateY(0);
-  }
-  50% {
-    transform: translate(-50%, -50%) translateY(-5px);
-  }
-}
-
-@keyframes markerPulse {
-  0% {
-    transform: scale(0.75);
-    opacity: 0.55;
-  }
-  70% {
-    transform: scale(1.9);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1.9);
-    opacity: 0;
-  }
-}
-</style>
