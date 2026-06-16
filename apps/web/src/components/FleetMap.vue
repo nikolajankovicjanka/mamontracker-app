@@ -209,7 +209,7 @@ onBeforeUnmount(() => {
   <div class="relative h-full w-full">
     <div
         v-if="!validVehicles.length"
-        class="absolute inset-0 z-[500] flex items-center justify-center bg-slate-50/85 px-4 text-center text-sm text-slate-500"
+        class="absolute inset-0 z-[500] flex items-center justify-center bg-slate-50/85 px-3 text-center text-sm text-slate-500"
     >
       Pozicije vozila još nisu dostupne.
     </div>
