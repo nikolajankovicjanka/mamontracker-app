@@ -14,6 +14,13 @@ return [
     |
     */
 
+    'traccar' => [
+        'base_url' => env('TRACCAR_BASE_URL'),
+        'email' => env('TRACCAR_EMAIL'),
+        'password' => env('TRACCAR_PASSWORD'),
+        'timeout' => (int) env('TRACCAR_TIMEOUT', 15),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

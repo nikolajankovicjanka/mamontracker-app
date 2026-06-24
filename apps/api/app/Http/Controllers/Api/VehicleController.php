@@ -291,4 +291,83 @@ class VehicleController extends Controller
             ] : null,
         ];
     }
+
+    public function routeHistory(Request $request, Vehicle $vehicle, \App\Services\Traccar\TraccarService $traccarService): JsonResponse
+    {
+        $tenant = current_tenant();
+        $user = $request->user();
+
+        if (! $tenant || ! $tenant->is_active || ! $user || ! $user->canAccessTenant($tenant->id)) {
+            return response()->json([
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
+        if ((int) $vehicle->tenant_id !== (int) $tenant->id) {
+            return response()->json([
+                'message' => 'Vehicle not found.',
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'from' => ['required', 'date'],
+            'to' => ['required', 'date', 'after:from'],
+        ]);
+
+        $vehicle->load('activeGpsDevice:id,vehicle_id,traccar_device_id,imei,device_name');
+
+        if (! $vehicle->activeGpsDevice || ! $vehicle->activeGpsDevice->traccar_device_id) {
+            return response()->json([
+                'message' => 'No linked Traccar device for this vehicle.',
+            ], 422);
+        }
+
+        $positions = $traccarService->getDevicePositionsByPeriod(
+            $vehicle->activeGpsDevice->traccar_device_id,
+            $validated['from'],
+            $validated['to'],
+        );
+
+        $points = collect($positions)
+            ->map(fn (array $position) => [
+                'id' => data_get($position, 'id'),
+                'latitude' => data_get($position, 'latitude'),
+                'longitude' => data_get($position, 'longitude'),
+                'speed_knots' => data_get($position, 'speed'),
+                'speed_kph' => data_get($position, 'speed') !== null
+                    ? round(((float) data_get($position, 'speed')) * 1.852, 2)
+                    : null,
+                'course' => data_get($position, 'course'),
+                'altitude' => data_get($position, 'altitude'),
+                'address' => data_get($position, 'address'),
+                'accuracy' => data_get($position, 'accuracy'),
+                'device_time' => data_get($position, 'deviceTime'),
+                'fix_time' => data_get($position, 'fixTime'),
+                'server_time' => data_get($position, 'serverTime'),
+                'attributes' => data_get($position, 'attributes', []),
+            ])
+            ->values();
+
+        return response()->json([
+            'data' => [
+                'vehicle' => [
+                    'id' => $vehicle->id,
+                    'name' => $vehicle->name,
+                    'license_plate' => $vehicle->license_plate,
+                ],
+                'device' => [
+                    'id' => $vehicle->activeGpsDevice->id,
+                    'device_name' => $vehicle->activeGpsDevice->device_name,
+                    'imei' => $vehicle->activeGpsDevice->imei,
+                    'traccar_device_id' => $vehicle->activeGpsDevice->traccar_device_id,
+                ],
+                'from' => $validated['from'],
+                'to' => $validated['to'],
+                'points_count' => $points->count(),
+                'start_point' => $points->first(),
+                'end_point' => $points->last(),
+                'points' => $points,
+            ],
+        ]);
+    }
 }
