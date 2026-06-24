@@ -127,4 +127,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/settings/tenant', [SettingsController::class, 'updateTenant'])
         ->middleware('tenant.feature:users');
     Route::put('/settings/preferences', [SettingsController::class, 'updatePreferences']);
+
+    Route::get('/vehicles/{vehicle}/route-history', [VehicleController::class, 'routeHistory']);
 });

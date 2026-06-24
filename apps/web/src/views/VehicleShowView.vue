@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { AxiosError } from 'axios'
 import api from '@/lib/axios'
 import { useRoute, useRouter } from 'vue-router'
@@ -7,6 +7,7 @@ import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { useVehiclesStore } from '@/stores/vehicles'
 import { useVehicleAssignmentsStore } from '@/stores/vehicleAssignments'
+import VehicleTrackingMapCard from '@/components/vehicles/VehicleTrackingMapCard.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -29,6 +30,8 @@ const availableUsers = ref<Array<{
   is_active: boolean
 }>>([])
 
+let refreshInterval: number | null = null
+
 const assignmentForm = reactive({
   user_id: null as number | null,
   assignment_type: 'primary' as 'primary' | 'secondary' | 'temporary',
@@ -44,6 +47,16 @@ onMounted(async () => {
   if (canManage.value) {
     await loadUsers()
     assignmentForm.assigned_from = getNowInputValue()
+  }
+
+  refreshInterval = window.setInterval(async () => {
+    await vehiclesStore.fetchVehicle(vehicleId.value)
+  }, 60000)
+})
+
+onBeforeUnmount(() => {
+  if (refreshInterval) {
+    window.clearInterval(refreshInterval)
   }
 })
 
@@ -182,7 +195,7 @@ async function handleDelete() {
   if (!currentVehicle.value) return
 
   const confirmed = window.confirm(
-      `Are you sure you want to delete vehicle "${currentVehicle.value.name}"?`
+      `Are you sure you want to delete vehicle "${currentVehicle.value.name}"?`,
   )
 
   if (!confirmed) return
@@ -237,7 +250,10 @@ async function handleDelete() {
       </div>
     </div>
 
-    <div v-if="loading && !currentVehicle" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div
+        v-if="loading && !currentVehicle"
+        class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+    >
       <div class="text-sm text-slate-500">Loading vehicle details...</div>
     </div>
 
@@ -388,7 +404,10 @@ async function handleDelete() {
                   </div>
                 </div>
 
-                <div v-if="assignment.notes" class="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                <div
+                    v-if="assignment.notes"
+                    class="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600"
+                >
                   {{ assignment.notes }}
                 </div>
               </div>
@@ -452,32 +471,7 @@ async function handleDelete() {
             </div>
           </div>
 
-          <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="mb-5 text-lg font-semibold text-slate-900">Position & Tracking</h2>
-
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <div class="text-sm text-slate-500">Latitude</div>
-                <div class="mt-1 font-semibold text-slate-900">
-                  {{ currentVehicle.last_known_lat ?? '—' }}
-                </div>
-              </div>
-
-              <div>
-                <div class="text-sm text-slate-500">Longitude</div>
-                <div class="mt-1 font-semibold text-slate-900">
-                  {{ currentVehicle.last_known_lng ?? '—' }}
-                </div>
-              </div>
-
-              <div>
-                <div class="text-sm text-slate-500">Last position update</div>
-                <div class="mt-1 font-semibold text-slate-900">
-                  {{ formatDateTime(currentVehicle.last_position_at) }}
-                </div>
-              </div>
-            </div>
-          </div>
+          <VehicleTrackingMapCard :vehicle="currentVehicle" />
         </div>
 
         <div class="space-y-6">
@@ -628,9 +622,11 @@ async function handleDelete() {
                 <div>
                   <span
                       class="rounded-full px-2.5 py-1 text-xs font-medium"
-                      :class="currentVehicle.gps_device.is_active
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : 'bg-rose-50 text-rose-700'"
+                      :class="
+                      currentVehicle.gps_device.is_active
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : 'bg-rose-50 text-rose-700'
+                    "
                   >
                     {{ currentVehicle.gps_device.is_active ? 'Active device' : 'Inactive device' }}
                   </span>

@@ -9,3 +9,6 @@ Artisan::command('inspire', function () {
 
 Schedule::command('app:generate-operational-alerts')
     ->dailyAt('08:00');
+
+Schedule::command('traccar:sync-devices')
+    ->everyMinute();
