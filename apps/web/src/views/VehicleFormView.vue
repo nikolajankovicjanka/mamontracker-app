@@ -13,6 +13,9 @@ const vehicleId = computed(() => Number(route.params.id))
 const errorMessage = ref('')
 const initialLoading = ref(false)
 
+const deviceMileageCandidate = ref<number | null>(null)
+const deviceMileageSource = ref<'oem_total_mileage' | 'odometer' | null>(null)
+
 const form = reactive({
   name: '',
   brand: '',
@@ -25,6 +28,20 @@ const form = reactive({
   status: 'active' as 'active' | 'inactive' | 'maintenance',
   notes: '',
 })
+
+function formatNumber(value: number | null | undefined) {
+  if (value === null || value === undefined) return '—'
+
+  return new Intl.NumberFormat('sr-Latn-RS', {
+    maximumFractionDigits: 0,
+  }).format(value)
+}
+
+function mileageSourceLabel(value: 'oem_total_mileage' | 'odometer' | null) {
+  if (value === 'oem_total_mileage') return 'OEM mileage'
+  if (value === 'odometer') return 'Telemetry odometer'
+  return '—'
+}
 
 onMounted(async () => {
   if (!isEdit.value) return
@@ -45,6 +62,9 @@ onMounted(async () => {
     form.current_mileage = vehicle.current_mileage ?? null
     form.status = vehicle.status
     form.notes = vehicle.notes ?? ''
+
+    deviceMileageCandidate.value = vehicle.device_mileage_candidate ?? null
+    deviceMileageSource.value = vehicle.device_mileage_source ?? null
   } catch (error) {
     const axiosError = error as AxiosError<{ message?: string }>
     errorMessage.value = axiosError.response?.data?.message ?? 'Vehicle could not be loaded.'
@@ -196,6 +216,24 @@ async function handleSubmit() {
                 min="0"
                 class="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-500"
             />
+            <p class="mt-2 text-xs text-slate-500">
+              Ovo je ručna, potvrđena kilometraža vozila. Trenutno je uređaj još nekalibrisan za tačan prikaz sa sata.
+            </p>
+          </div>
+
+          <div v-if="isEdit" class="sm:col-span-2">
+            <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <div class="font-semibold">Telemetry mileage candidate</div>
+              <div class="mt-1">
+                Vrijednost: {{ formatNumber(deviceMileageCandidate) }}
+              </div>
+              <div class="mt-1">
+                Izvor: {{ mileageSourceLabel(deviceMileageSource) }}
+              </div>
+              <div class="mt-2 text-xs">
+                Ovaj podatak još nije automatski vezan za kilometražu vozila dok ne potvrdimo tačnu skalu/jedinicu sa uređaja.
+              </div>
+            </div>
           </div>
 
           <div class="sm:col-span-2">

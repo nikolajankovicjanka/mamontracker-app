@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import {
   CarFront,
@@ -21,8 +21,22 @@ const dashboard = useDashboardStore()
 const { summary, loading } = storeToRefs(dashboard)
 const mapExpanded = ref(false)
 
+let refreshInterval: number | null = null
+
 onMounted(async () => {
   await dashboard.fetchSummary()
+
+  refreshInterval = window.setInterval(async () => {
+    if (document.hidden) return
+    await dashboard.refreshSummary()
+  }, 30000)
+})
+
+onBeforeUnmount(() => {
+  if (refreshInterval) {
+    window.clearInterval(refreshInterval)
+    refreshInterval = null
+  }
 })
 
 const overview = computed(() => summary.value?.overview)

@@ -70,9 +70,19 @@ export const useDashboardStore = defineStore('dashboard', () => {
         }
     }
 
+    async function refreshSummary(): Promise<void> {
+        try {
+            const { data } = await api.get<DashboardSummary>('/api/dashboard/summary')
+            summary.value = data
+        } catch (error) {
+            console.error('Dashboard refresh failed:', error)
+        }
+    }
+
     return {
         summary,
         loading,
         fetchSummary,
+        refreshSummary,
     }
 })

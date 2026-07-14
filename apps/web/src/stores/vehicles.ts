@@ -29,6 +29,64 @@ export type VehicleAssignmentItem = {
     } | null
 }
 
+export type VehicleTelemetry = {
+    ignition: boolean | null
+    motion: boolean | null
+    valid_fix: boolean | null
+
+    speed_knots: number | null
+    speed_kph: number | null
+    course: number | null
+    altitude: number | null
+
+    latitude: number | null
+    longitude: number | null
+    accuracy: number | null
+
+    fix_time: string | null
+    device_time: string | null
+    server_time: string | null
+
+    priority: number | null
+    event: number | null
+
+    satellites: number | null
+    pdop: number | null
+    hdop: number | null
+
+    rssi: number | null
+    operator_code: string | number | null
+
+    power_voltage: number | null
+    battery_voltage: number | null
+
+    odometer: number | null
+    trip_distance: number | null
+    total_distance: number | null
+    engine_hours: number | null
+
+    vin: string | null
+
+    sleep_mode: number | null
+    battery_current: number | null
+    oem_total_mileage: number | null
+    oem_fuel_level: number | null
+
+    raw_io: {
+        io68: number | null
+        io69: number | null
+        io200: number | null
+        io30: number | null
+        io31: number | null
+        io32: number | null
+        io36: number | null
+        io37: number | null
+        io43: number | null
+        io389: number | null
+        io390: number | null
+    } | null
+}
+
 export type VehicleItem = {
     id: number
     name: string
@@ -39,6 +97,8 @@ export type VehicleItem = {
     vin: string | null
     registration_expiry_date: string | null
     current_mileage: number
+    device_mileage_candidate: number | null
+    device_mileage_source: 'oem_total_mileage' | 'odometer' | null
     status: 'active' | 'inactive' | 'maintenance'
     notes: string | null
     last_known_lat: number | null
@@ -56,6 +116,7 @@ export type VehicleItem = {
         traccar_device_id?: number | null
         is_active: boolean
         last_sync_at: string | null
+        telemetry?: VehicleTelemetry | null
     } | null
 }
 

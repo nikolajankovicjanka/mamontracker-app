@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import api from '@/lib/axios'
+import type { VehicleItem, VehicleTelemetry } from '@/stores/vehicles'
 
 type RoutePoint = {
   id: number | null
@@ -42,29 +43,8 @@ type RouteHistoryResponse = {
   }
 }
 
-type VehicleGpsDevice = {
-  device_name: string
-  model?: string | null
-  provider?: string | null
-  imei?: string | null
-  traccar_device_id?: number | null
-  is_active: boolean
-  last_sync_at: string | null
-} | null
-
-type VehicleLike = {
-  id: number
-  name: string
-  license_plate: string | null
-  last_known_lat: number | null
-  last_known_lng: number | null
-  last_position_at: string | null
-  last_speed_kph: number | null
-  gps_device: VehicleGpsDevice
-}
-
 const props = defineProps<{
-  vehicle: VehicleLike
+  vehicle: VehicleItem
 }>()
 
 const activeTab = ref<'current' | 'history'>('current')
@@ -83,6 +63,8 @@ const form = ref({
   to: '',
 })
 
+const telemetry = computed<VehicleTelemetry | null>(() => props.vehicle.gps_device?.telemetry ?? null)
+
 const hasCurrentLocation = computed(
     () =>
         props.vehicle.last_known_lat !== null &&
@@ -90,6 +72,12 @@ const hasCurrentLocation = computed(
 )
 
 const hasRoutePoints = computed(() => (routeData.value?.points?.length ?? 0) > 0)
+
+const googleMapsUrl = computed(() => {
+  if (!hasCurrentLocation.value) return null
+
+  return `https://www.google.com/maps?q=${props.vehicle.last_known_lat},${props.vehicle.last_known_lng}`
+})
 
 function getTodayRange() {
   const now = new Date()
@@ -134,6 +122,15 @@ function formatDateTime(date: string | null) {
   }).format(new Date(date))
 }
 
+function formatNumber(value: number | null | undefined, digits = 0) {
+  if (value === null || value === undefined) return '—'
+
+  return new Intl.NumberFormat('sr-Latn-RS', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value)
+}
+
 function gpsStatusBadgeClass(isActive: boolean | undefined) {
   return isActive
       ? 'bg-emerald-50 text-emerald-700'
@@ -144,11 +141,29 @@ function gpsStatusLabel(isActive: boolean | undefined) {
   return isActive ? 'Online' : 'Offline'
 }
 
-const googleMapsUrl = computed(() => {
-  if (!hasCurrentLocation.value) return null
+function ignitionBadgeClass(value: boolean | null | undefined) {
+  return value ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'
+}
 
-  return `https://www.google.com/maps?q=${props.vehicle.last_known_lat},${props.vehicle.last_known_lng}`
-})
+function ignitionLabel(value: boolean | null | undefined) {
+  return value ? 'Uključen' : 'Isključen'
+}
+
+function motionBadgeClass(value: boolean | null | undefined) {
+  return value ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-700'
+}
+
+function motionLabel(value: boolean | null | undefined) {
+  return value ? 'U pokretu' : 'Miruje'
+}
+
+function fixBadgeClass(value: boolean | null | undefined) {
+  return value ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+}
+
+function fixLabel(value: boolean | null | undefined) {
+  return value ? 'Validan GPS' : 'Nevalidan GPS'
+}
 
 function createMarkerIcon(type: 'current' | 'start' | 'end') {
   const config =
@@ -360,15 +375,6 @@ async function renderRouteHistory() {
   }, 150)
 }
 
-async function renderActiveTab() {
-  if (activeTab.value === 'current') {
-    await renderCurrentLocation()
-    return
-  }
-
-  await renderRouteHistory()
-}
-
 async function fetchRouteHistory() {
   loading.value = true
   errorMessage.value = ''
@@ -482,6 +488,24 @@ onBeforeUnmount(() => {
         >
           {{ gpsStatusLabel(vehicle.gps_device?.is_active) }}
         </span>
+        <span
+            class="rounded-full px-2.5 py-1 text-xs font-medium"
+            :class="ignitionBadgeClass(telemetry?.ignition)"
+        >
+          Motor: {{ ignitionLabel(telemetry?.ignition) }}
+        </span>
+        <span
+            class="rounded-full px-2.5 py-1 text-xs font-medium"
+            :class="motionBadgeClass(telemetry?.motion)"
+        >
+          Kretanje: {{ motionLabel(telemetry?.motion) }}
+        </span>
+        <span
+            class="rounded-full px-2.5 py-1 text-xs font-medium"
+            :class="fixBadgeClass(telemetry?.valid_fix)"
+        >
+          GPS: {{ fixLabel(telemetry?.valid_fix) }}
+        </span>
       </div>
     </div>
 
@@ -515,14 +539,14 @@ onBeforeUnmount(() => {
 
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <div class="text-sm text-slate-500">Last speed</div>
+        <div class="text-sm text-slate-500">Trenutna brzina</div>
         <div class="mt-1 font-semibold text-slate-900">
-          {{ vehicle.last_speed_kph ?? 0 }} km/h
+          {{ formatNumber(telemetry?.speed_kph ?? vehicle.last_speed_kph ?? 0, 0) }} km/h
         </div>
       </div>
 
       <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <div class="text-sm text-slate-500">Last position update</div>
+        <div class="text-sm text-slate-500">Zadnja pozicija</div>
         <div class="mt-1 font-semibold text-slate-900">
           {{ formatDateTime(vehicle.last_position_at) }}
         </div>
@@ -539,6 +563,82 @@ onBeforeUnmount(() => {
         <div class="text-sm text-slate-500">Traccar device ID</div>
         <div class="mt-1 font-semibold text-slate-900">
           {{ vehicle.gps_device?.traccar_device_id ?? '—' }}
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div class="text-sm text-slate-500">Sateliti</div>
+        <div class="mt-1 font-semibold text-slate-900">
+          {{ formatNumber(telemetry?.satellites ?? null) }}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div class="text-sm text-slate-500">RSSI signal</div>
+        <div class="mt-1 font-semibold text-slate-900">
+          {{ formatNumber(telemetry?.rssi ?? null) }}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div class="text-sm text-slate-500">Napon</div>
+        <div class="mt-1 font-semibold text-slate-900">
+          {{ formatNumber(telemetry?.power_voltage ?? null, 2) }} V
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div class="text-sm text-slate-500">Battery current</div>
+        <div class="mt-1 font-semibold text-slate-900">
+          {{ formatNumber(telemetry?.battery_current ?? null) }}
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div class="text-sm text-slate-500">Odometer</div>
+        <div class="mt-1 font-semibold text-slate-900">
+          {{ formatNumber(telemetry?.odometer ?? null) }}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div class="text-sm text-slate-500">Ukupna distanca</div>
+        <div class="mt-1 font-semibold text-slate-900">
+          {{ formatNumber(telemetry?.total_distance ?? null, 0) }}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div class="text-sm text-slate-500">Engine hours</div>
+        <div class="mt-1 font-semibold text-slate-900">
+          {{ formatNumber(telemetry?.engine_hours ?? null) }}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div class="text-sm text-slate-500">Fuel level</div>
+        <div class="mt-1 font-semibold text-slate-900">
+          {{ telemetry?.oem_fuel_level ?? '—' }}
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div class="text-sm text-slate-500">Telemetry VIN</div>
+        <div class="mt-1 break-all font-semibold text-slate-900">
+          {{ telemetry?.vin || '—' }}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div class="text-sm text-slate-500">Operator code</div>
+        <div class="mt-1 font-semibold text-slate-900">
+          {{ telemetry?.operator_code ?? '—' }}
         </div>
       </div>
     </div>
