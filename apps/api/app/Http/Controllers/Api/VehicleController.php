@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Vehicle;
 use App\Models\VehicleAssignment;
+use App\Services\Traccar\TraccarService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -35,7 +36,7 @@ class VehicleController extends Controller
         $vehicles = Vehicle::query()
             ->where('tenant_id', $tenant->id)
             ->with([
-                'activeGpsDevice:id,vehicle_id,device_name,is_active,last_sync_at',
+                'activeGpsDevice:id,vehicle_id,device_name,is_active,last_sync_at,last_payload',
                 'activeAssignments' => fn ($query) => $query
                     ->with([
                         'user:id,name,email,role,is_active',
@@ -80,7 +81,7 @@ class VehicleController extends Controller
         }
 
         $vehicle->load([
-            'activeGpsDevice:id,vehicle_id,device_name,is_active,last_sync_at,imei,traccar_device_id,model,provider',
+            'activeGpsDevice:id,vehicle_id,device_name,is_active,last_sync_at,imei,traccar_device_id,model,provider,last_payload',
             'activeAssignments' => fn ($query) => $query
                 ->with([
                     'user:id,name,email,role,is_active',
@@ -125,7 +126,7 @@ class VehicleController extends Controller
         ]);
 
         $vehicle->load([
-            'activeGpsDevice:id,vehicle_id,device_name,is_active,last_sync_at',
+            'activeGpsDevice:id,vehicle_id,device_name,is_active,last_sync_at,last_payload',
         ])->loadCount('activeAssignments');
 
         return response()->json([
@@ -162,7 +163,7 @@ class VehicleController extends Controller
         $vehicle->update($validated);
 
         $vehicle->load([
-            'activeGpsDevice:id,vehicle_id,device_name,is_active,last_sync_at',
+            'activeGpsDevice:id,vehicle_id,device_name,is_active,last_sync_at,last_payload',
         ])->loadCount('activeAssignments');
 
         return response()->json([
@@ -225,6 +226,92 @@ class VehicleController extends Controller
         ]);
     }
 
+    private function transformTelemetry(?array $payload): ?array
+    {
+        $telemetry = data_get($payload, 'telemetry');
+
+        if (! is_array($telemetry)) {
+            return null;
+        }
+
+        return [
+            'ignition' => data_get($telemetry, 'ignition'),
+            'motion' => data_get($telemetry, 'motion'),
+            'valid_fix' => data_get($telemetry, 'valid_fix'),
+
+            'speed_knots' => data_get($telemetry, 'speed_knots'),
+            'speed_kph' => data_get($telemetry, 'speed_kph'),
+            'course' => data_get($telemetry, 'course'),
+            'altitude' => data_get($telemetry, 'altitude'),
+
+            'latitude' => data_get($telemetry, 'latitude'),
+            'longitude' => data_get($telemetry, 'longitude'),
+            'accuracy' => data_get($telemetry, 'accuracy'),
+
+            'fix_time' => data_get($telemetry, 'fix_time'),
+            'device_time' => data_get($telemetry, 'device_time'),
+            'server_time' => data_get($telemetry, 'server_time'),
+
+            'priority' => data_get($telemetry, 'priority'),
+            'event' => data_get($telemetry, 'event'),
+
+            'satellites' => data_get($telemetry, 'satellites'),
+            'pdop' => data_get($telemetry, 'pdop'),
+            'hdop' => data_get($telemetry, 'hdop'),
+
+            'rssi' => data_get($telemetry, 'rssi'),
+            'operator_code' => data_get($telemetry, 'operator_code'),
+
+            'power_voltage' => data_get($telemetry, 'power_voltage'),
+            'battery_voltage' => data_get($telemetry, 'battery_voltage'),
+
+            'odometer' => data_get($telemetry, 'odometer'),
+            'trip_distance' => data_get($telemetry, 'trip_distance'),
+            'total_distance' => data_get($telemetry, 'total_distance'),
+            'engine_hours' => data_get($telemetry, 'engine_hours'),
+
+            'vin' => data_get($telemetry, 'vin'),
+
+            'sleep_mode' => data_get($telemetry, 'sleep_mode'),
+            'battery_current' => data_get($telemetry, 'battery_current'),
+            'oem_total_mileage' => data_get($telemetry, 'oem_total_mileage'),
+            'oem_fuel_level' => data_get($telemetry, 'oem_fuel_level'),
+
+            'raw_io' => [
+                'io68' => data_get($telemetry, 'io68'),
+                'io69' => data_get($telemetry, 'io69'),
+                'io200' => data_get($telemetry, 'io200'),
+                'io30' => data_get($telemetry, 'io30'),
+                'io31' => data_get($telemetry, 'io31'),
+                'io32' => data_get($telemetry, 'io32'),
+                'io36' => data_get($telemetry, 'io36'),
+                'io37' => data_get($telemetry, 'io37'),
+                'io43' => data_get($telemetry, 'io43'),
+                'io389' => data_get($telemetry, 'io389'),
+                'io390' => data_get($telemetry, 'io390'),
+            ],
+        ];
+    }
+
+    private function resolveMileageSource(Vehicle $vehicle): string
+    {
+        $telemetry = data_get($vehicle->activeGpsDevice?->last_payload, 'telemetry');
+
+        if (! is_array($telemetry)) {
+            return 'manual';
+        }
+
+        if (data_get($telemetry, 'oem_total_mileage') !== null) {
+            return 'oem_total_mileage';
+        }
+
+        if (data_get($telemetry, 'odometer') !== null) {
+            return 'odometer';
+        }
+
+        return 'manual';
+    }
+
     private function transformVehicle(Vehicle $vehicle): array
     {
         return [
@@ -237,6 +324,7 @@ class VehicleController extends Controller
             'vin' => $vehicle->vin,
             'registration_expiry_date' => $vehicle->registration_expiry_date?->toDateString(),
             'current_mileage' => (float) $vehicle->current_mileage,
+            'mileage_source' => $this->resolveMileageSource($vehicle),
             'status' => $vehicle->status,
             'notes' => $vehicle->notes,
             'last_known_lat' => $vehicle->last_known_lat !== null ? (float) $vehicle->last_known_lat : null,
@@ -252,6 +340,7 @@ class VehicleController extends Controller
                 'traccar_device_id' => $vehicle->activeGpsDevice->traccar_device_id ?? null,
                 'is_active' => $vehicle->activeGpsDevice->is_active,
                 'last_sync_at' => $vehicle->activeGpsDevice->last_sync_at?->toIso8601String(),
+                'telemetry' => $this->transformTelemetry($vehicle->activeGpsDevice->last_payload),
             ] : null,
             'active_assignments' => $vehicle->relationLoaded('activeAssignments')
                 ? $vehicle->activeAssignments->map(fn (VehicleAssignment $assignment) => $this->transformAssignment($assignment))->values()
@@ -292,7 +381,7 @@ class VehicleController extends Controller
         ];
     }
 
-    public function routeHistory(Request $request, Vehicle $vehicle, \App\Services\Traccar\TraccarService $traccarService): JsonResponse
+    public function routeHistory(Request $request, Vehicle $vehicle, TraccarService $traccarService): JsonResponse
     {
         $tenant = current_tenant();
         $user = $request->user();
