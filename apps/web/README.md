@@ -40,3 +40,15 @@ npm run dev
 ```sh
 npm run build
 ```
+## Otvaranje local aplikacije ide preko http://mamont.localhost:5174/, takodje pokretanje servera idemo striktno portk 5174
+
+```sh
+npm run dev -- --host 0.0.0.0 --port 5174 --strictPort
+
+````
+## Pokretanje schedule za pracenje live gps uredjaja - 
+```sh
+docker compose exec app php artisan schedule:work
+```
+
+

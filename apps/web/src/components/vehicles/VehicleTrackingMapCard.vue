@@ -285,15 +285,18 @@ async function renderCurrentLocation() {
 async function renderRouteHistory() {
   if (!map || !layerGroup) return
 
+  const activeMap = map
+  const activeLayerGroup = layerGroup
+
   clearMap()
   await nextTick()
-  map.invalidateSize()
+  activeMap.invalidateSize()
 
   const points = routeData.value?.points ?? []
 
   if (!points.length) {
     debugMessage.value = 'Nema tačaka istorije za prikaz.'
-    map.setView([44.756, 19.216], 12)
+    activeMap.setView([44.756, 19.216], 12)
     return
   }
 
@@ -307,7 +310,7 @@ async function renderRouteHistory() {
 
   if (!validPoints.length) {
     debugMessage.value = 'Istorija nema validne GPS tačke.'
-    map.setView([44.756, 19.216], 12)
+    activeMap.setView([44.756, 19.216], 12)
     return
   }
 
@@ -319,7 +322,7 @@ async function renderRouteHistory() {
     color: '#2563eb',
     weight: 6,
     opacity: 1,
-  }).addTo(layerGroup)
+  }).addTo(activeLayerGroup)
 
   validPoints.forEach((point) => {
     L.circleMarker([point.latitude, point.longitude], {
@@ -329,11 +332,16 @@ async function renderRouteHistory() {
       opacity: 1,
       fillColor: '#60a5fa',
       fillOpacity: 0.9,
-    }).addTo(layerGroup)
+    }).addTo(activeLayerGroup)
   })
 
-  const startPoint = validPoints[0]
-  const endPoint = validPoints[validPoints.length - 1]
+  const startPoint = validPoints.at(0)
+  const endPoint = validPoints.at(-1)
+
+  if (!startPoint || !endPoint) {
+    debugMessage.value = 'Istorija nema početnu ili krajnju GPS tačku.'
+    return
+  }
 
   L.marker([startPoint.latitude, startPoint.longitude], {
     icon: createMarkerIcon('start'),
@@ -344,7 +352,7 @@ async function renderRouteHistory() {
             ['Brzina', `${startPoint.speed_kph ?? 0} km/h`],
           ]),
       )
-      .addTo(layerGroup)
+      .addTo(activeLayerGroup)
 
   L.marker([endPoint.latitude, endPoint.longitude], {
     icon: createMarkerIcon('end'),
@@ -355,7 +363,7 @@ async function renderRouteHistory() {
             ['Brzina', `${endPoint.speed_kph ?? 0} km/h`],
           ]),
       )
-      .addTo(layerGroup)
+      .addTo(activeLayerGroup)
 
   debugMessage.value = `Renderujem ${latLngs.length} tačaka istorije.`
 

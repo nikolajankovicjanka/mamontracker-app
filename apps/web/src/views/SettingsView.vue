@@ -240,7 +240,8 @@ async function savePreferences() {
               >
                 <option value="en">English</option>
                 <option value="sr-Latn">Srpski (Latinica)</option>
-                <option value="sr-Cyrl">Српски (Ћирилица)</option>
+                <option value="de">Njemački</option>
+                <option value="cryl">Cirilica</option>
               </select>
             </div>
 
