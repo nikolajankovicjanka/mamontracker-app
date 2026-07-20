@@ -183,15 +183,18 @@ async function renderRoute() {
     return
   }
 
+  const activeMap = map
+  const activeRouteLayer = routeLayer
+
   clearRoute()
   await nextTick()
-  map.invalidateSize()
+  activeMap.invalidateSize()
 
   const points = routeData.value?.points ?? []
 
   if (!points.length) {
     debugMessage.value = 'Nema tačaka za prikaz.'
-    map.setView([44.756, 19.216], 12)
+    activeMap.setView([44.756, 19.216], 12)
     return
   }
 
@@ -205,7 +208,7 @@ async function renderRoute() {
 
   if (!validPoints.length) {
     debugMessage.value = 'Nema validnih GPS tačaka.'
-    map.setView([44.756, 19.216], 12)
+    activeMap.setView([44.756, 19.216], 12)
     return
   }
 
@@ -219,7 +222,7 @@ async function renderRoute() {
     color: '#2563eb',
     weight: 6,
     opacity: 1,
-  }).addTo(routeLayer)
+  }).addTo(activeRouteLayer)
 
   validPoints.forEach((point) => {
     L.circleMarker([point.latitude, point.longitude], {
@@ -229,25 +232,29 @@ async function renderRoute() {
       opacity: 1,
       fillColor: '#60a5fa',
       fillOpacity: 0.9,
-    }).addTo(routeLayer)
+    }).addTo(activeRouteLayer)
   })
 
-  const startPoint = validPoints[0]
-  const endPoint = validPoints[validPoints.length - 1]
+  const startPoint = points.at(0)
+  const endPoint = points.at(-1)
+
+  if (!startPoint || !endPoint) {
+    return
+  }
 
   L.marker([startPoint.latitude, startPoint.longitude], {
     icon: createMarkerIcon('start'),
   })
       .bindPopup(buildPopup(startPoint, 'Početak rute'))
-      .addTo(routeLayer)
+      .addTo(activeRouteLayer)
 
   L.marker([endPoint.latitude, endPoint.longitude], {
     icon: createMarkerIcon('end'),
   })
       .bindPopup(buildPopup(endPoint, 'Kraj rute'))
-      .addTo(routeLayer)
+      .addTo(activeRouteLayer)
 
-  const bounds = routeLayer.getBounds()
+  const bounds = activeRouteLayer.getBounds()
 
   setTimeout(() => {
     map?.invalidateSize()

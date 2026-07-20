@@ -14,12 +14,14 @@ import {
 import FleetMap from '@/components/FleetMap.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useDashboardStore } from '@/stores/dashboard'
+import { useI18n } from 'vue-i18n'
 
 const auth = useAuthStore()
 const dashboard = useDashboardStore()
 
 const { summary, loading } = storeToRefs(dashboard)
 const mapExpanded = ref(false)
+const { t } = useI18n()
 
 let refreshInterval: number | null = null
 
@@ -110,21 +112,24 @@ function formatMileage(value: number) {
 
 function daysLeftLabel(daysLeft: number | null) {
   if (daysLeft === null) return '—'
-  if (daysLeft === 0) return 'danas'
-  if (daysLeft === 1) return '1 dan'
-  return `${daysLeft} dana`
+  if (daysLeft === 0) return t('dashboard.daysLeft.today')
+  if (daysLeft === 1) return t('dashboard.daysLeft.one')
+
+  return t('dashboard.daysLeft.many', {
+    count: daysLeft,
+  })
 }
 
 function severityLabel(severity: string | null) {
   switch (severity) {
     case 'high':
-      return 'visok'
+      return t('dashboard.severity.high')
     case 'medium':
-      return 'srednji'
+      return t('dashboard.severity.medium')
     case 'low':
-      return 'nizak'
+      return t('dashboard.severity.low')
     default:
-      return 'info'
+      return t('dashboard.severity.info')
   }
 }
 
@@ -147,15 +152,15 @@ function activityBadgeClass(severity: string | null) {
     <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
       <div>
         <h1 class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          Pregled voznog parka
+          {{ t('dashboard.title') }}
         </h1>
         <p class="mt-2 text-sm text-slate-500">
-          Pregled u realnom vremenu za vozni park kompanije {{ auth.tenant?.name }}.
+          {{ t('dashboard.subtitle', { company: auth.tenant?.name }) }}
         </p>
       </div>
 
       <div class="text-sm text-slate-500">
-        Posljednje ažuriranje:
+        {{ t('dashboard.lastUpdated') }}:
         <span class="font-medium text-slate-700">
           {{ formatDateTime(summary?.generated_at ?? null) }}
         </span>
@@ -166,7 +171,7 @@ function activityBadgeClass(severity: string | null) {
         v-if="loading && !summary"
         class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
     >
-      <div class="text-sm text-slate-500">Učitavanje dashboarda...</div>
+      <div class="text-sm text-slate-500">{{ t('dashboard.loading') }}...</div>
     </div>
 
     <template v-else>
@@ -178,12 +183,12 @@ function activityBadgeClass(severity: string | null) {
                 <CarFront class="h-5 w-5" />
               </div>
               <div class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                Vozni park
+                {{ t('dashboard.cards.fleet') }}
               </div>
             </div>
 
             <div class="text-xs font-medium text-emerald-600">
-              ukupno
+              {{ t('dashboard.cards.total') }}
             </div>
           </div>
 
@@ -191,7 +196,7 @@ function activityBadgeClass(severity: string | null) {
             {{ overview?.total_vehicles ?? 0 }}
           </div>
           <div class="mt-2 text-sm text-slate-500">
-            Ukupno vozila
+            {{ t('dashboard.cards.totalVehicles') }}
           </div>
 
           <div class="mt-6 h-1.5 overflow-hidden rounded-full bg-slate-100">
@@ -206,7 +211,7 @@ function activityBadgeClass(severity: string | null) {
                 <Wifi class="h-5 w-5" />
               </div>
               <div class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                Online
+                {{ t('dashboard.cards.online') }}
               </div>
             </div>
 
@@ -219,7 +224,7 @@ function activityBadgeClass(severity: string | null) {
             {{ overview?.online_vehicles ?? 0 }}
           </div>
           <div class="mt-2 text-sm text-slate-500">
-            Online vozila
+            {{ t('dashboard.cards.onlineVehicles') }}
           </div>
 
           <div class="mt-6 h-1.5 overflow-hidden rounded-full bg-slate-100">
@@ -237,7 +242,7 @@ function activityBadgeClass(severity: string | null) {
                 <WifiOff class="h-5 w-5" />
               </div>
               <div class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
-                Offline
+                {{ t('dashboard.cards.offline') }}
               </div>
             </div>
 
@@ -250,7 +255,7 @@ function activityBadgeClass(severity: string | null) {
             {{ overview?.offline_vehicles ?? 0 }}
           </div>
           <div class="mt-2 text-sm text-slate-500">
-            Offline vozila
+            {{ t('dashboard.cards.offlineVehicles') }}
           </div>
 
           <div class="mt-6 h-1.5 overflow-hidden rounded-full bg-slate-100">
@@ -268,12 +273,12 @@ function activityBadgeClass(severity: string | null) {
                 <BadgeAlert class="h-5 w-5" />
               </div>
               <div class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                Registracije
+                {{ t('dashboard.cards.registrations') }}
               </div>
             </div>
 
             <div class="text-xs font-medium text-amber-600">
-              hitno
+              {{ t('dashboard.cards.urgent') }}
             </div>
           </div>
 
@@ -281,7 +286,7 @@ function activityBadgeClass(severity: string | null) {
             {{ overview?.expiring_registrations_count ?? 0 }}
           </div>
           <div class="mt-2 text-sm text-slate-500">
-            Ističu uskoro
+            {{ t('dashboard.cards.expiringSoon') }}
           </div>
 
           <div class="mt-6 h-1.5 overflow-hidden rounded-full bg-slate-100">
@@ -306,9 +311,9 @@ function activityBadgeClass(severity: string | null) {
         >
           <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex items-center gap-3">
-              <h2 class="text-lg font-semibold text-slate-900">Mapa voznog parka uživo</h2>
+              <h2 class="text-lg font-semibold text-slate-900">{{ t('dashboard.map.title') }}</h2>
               <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
-                Uživo
+                {{ t('dashboard.map.live') }}
               </span>
             </div>
 
@@ -316,11 +321,11 @@ function activityBadgeClass(severity: string | null) {
               <div class="flex flex-wrap items-center gap-4 text-xs text-slate-500">
                 <div class="flex items-center gap-2">
                   <span class="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                  <span>Online</span>
+                  <span>{{ t('dashboard.status.online') }}</span>
                 </div>
                 <div class="flex items-center gap-2">
                   <span class="h-2.5 w-2.5 rounded-full bg-rose-500" />
-                  <span>Offline</span>
+                  <span>{{ t('dashboard.status.offline') }}</span>
                 </div>
               </div>
 
@@ -330,7 +335,7 @@ function activityBadgeClass(severity: string | null) {
                   @click.stop="mapExpanded = !mapExpanded"
               >
                 <component :is="mapExpanded ? Minimize2 : Maximize2" class="h-4.5 w-4.5" />
-                <span>{{ mapExpanded ? 'Smanji' : 'Proširi mapu' }}</span>
+                <span>{{ mapExpanded ? t('dashboard.map.collapse') : t('dashboard.map.expand')}}</span>
               </button>
             </div>
           </div>
@@ -342,7 +347,7 @@ function activityBadgeClass(severity: string | null) {
             <div class="absolute left-4 top-4 z-10 rounded-2xl border border-white/70 bg-white/90 px-3 py-2 text-xs font-medium text-slate-600 shadow-sm backdrop-blur">
               <div class="flex items-center gap-2">
                 <MapPinned class="h-4 w-4 text-blue-600" />
-                <span>Fleet tracking mapa</span>
+                <span>{{ t('dashboard.map.trackingMap') }}a</span>
               </div>
             </div>
 
@@ -358,9 +363,9 @@ function activityBadgeClass(severity: string | null) {
             :class="mapExpanded ? 'xl:hidden' : ''"
         >
           <div class="mb-5 flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-slate-900">Registracije koje ističu</h2>
+            <h2 class="text-lg font-semibold text-slate-900">{{ t('dashboard.registrations.title') }}</h2>
             <span class="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
-              Prikazano: {{ summary?.expiring_registrations?.length ?? 0 }}
+              {{ t('dashboard.registrations.shown') }} {{ summary?.expiring_registrations?.length ?? 0 }}
             </span>
           </div>
 
@@ -395,7 +400,7 @@ function activityBadgeClass(severity: string | null) {
                 v-if="!(summary?.expiring_registrations?.length)"
                 class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500"
             >
-              Nema registracija koje uskoro ističu.
+              {{ t('dashboard.registrations.empty') }}
             </div>
           </div>
         </div>
@@ -409,7 +414,7 @@ function activityBadgeClass(severity: string | null) {
                 <CarFront class="h-5 w-5" />
               </div>
               <div>
-                <h2 class="text-lg font-semibold text-slate-900">Vozila sa najvećom kilometražom</h2>
+                <h2 class="text-lg font-semibold text-slate-900">{{ t('dashboard.mileage.title') }}</h2>
                 <div class="text-sm text-slate-400">
                   Top {{ summary?.highest_mileage_vehicles?.length ?? 0 }}
                 </div>
@@ -421,10 +426,10 @@ function activityBadgeClass(severity: string | null) {
             <table class="min-w-full text-left">
               <thead>
               <tr class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
-                <th class="pb-3 font-medium">Vozilo</th>
-                <th class="pb-3 font-medium">Tablice</th>
-                <th class="pb-3 font-medium">Kilometraža</th>
-                <th class="pb-3 font-medium">Status</th>
+                <th class="pb-3 font-medium">{{ t('dashboard.mileage.vehicle') }}</th>
+                <th class="pb-3 font-medium">{{ t('dashboard.mileage.plates') }}</th>
+                <th class="pb-3 font-medium">{{ t('dashboard.mileage.mileage') }}</th>
+                <th class="pb-3 font-medium">{{ t('dashboard.mileage.status') }}</th>
               </tr>
               </thead>
               <tbody>
@@ -449,7 +454,7 @@ function activityBadgeClass(severity: string | null) {
                         ? 'bg-emerald-50 text-emerald-700'
                         : 'bg-rose-50 text-rose-700'"
                     >
-                      {{ vehicle.online ? 'Online' : 'Offline' }}
+                      {{ vehicle.online ? t('dashboard.status.online') : t('dashboard.status.offline')}}
                     </span>
                 </td>
               </tr>
@@ -482,7 +487,7 @@ function activityBadgeClass(severity: string | null) {
                     ? 'bg-emerald-50 text-emerald-700'
                     : 'bg-rose-50 text-rose-700'"
                 >
-                  {{ vehicle.online ? 'Online' : 'Offline' }}
+                  {{ vehicle.online ? t('dashboard.status.online') : t('dashboard.status.offline')}}
                 </span>
               </div>
             </div>
@@ -496,9 +501,9 @@ function activityBadgeClass(severity: string | null) {
                 <BellRing class="h-5 w-5" />
               </div>
               <div>
-                <h2 class="text-lg font-semibold text-slate-900">Nedavne aktivnosti</h2>
+                <h2 class="text-lg font-semibold text-slate-900">{{ t('dashboard.activity.title') }}</h2>
                 <div class="text-sm text-slate-400">
-                  Posljednji događaji
+                  {{ t('dashboard.activity.subtitle') }}
                 </div>
               </div>
             </div>
@@ -536,7 +541,7 @@ function activityBadgeClass(severity: string | null) {
                 v-if="!(summary?.recent_activity?.length)"
                 class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500"
             >
-              Još nema nedavnih aktivnosti.
+              {{ t('dashboard.activity.empty') }}
             </div>
           </div>
         </div>

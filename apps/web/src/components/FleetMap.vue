@@ -139,8 +139,9 @@ function renderMarkers() {
     bounds.extend([vehicle.lat, vehicle.lng])
   })
 
-  if (validVehicles.value.length === 1) {
-    const vehicle = validVehicles.value[0]
+  const vehicle = validVehicles.value.at(0)
+
+  if (validVehicles.value.length === 1 && vehicle) {
     map.setView([vehicle.lat, vehicle.lng], 12)
   } else {
     map.fitBounds(bounds, {

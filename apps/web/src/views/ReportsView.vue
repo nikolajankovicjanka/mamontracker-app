@@ -51,6 +51,8 @@ type ReportDataset = {
   rows: Record<string, string | number | null>[]
 }
 
+type ReportKey = 'fleet' | 'registrations' | 'services' | 'assignments' | 'users' | 'alerts'
+
 type ReportConfig = {
   label: string
   primaryLabel?: string
@@ -68,7 +70,7 @@ const loadingDataset = ref(false)
 const exporting = ref(false)
 const errorMessage = ref('')
 
-const selectedReport = ref<'fleet' | 'registrations' | 'services' | 'assignments' | 'users' | 'alerts'>('fleet')
+const selectedReport = ref<ReportKey>('fleet')
 
 const filters = reactive({
   search: '',
@@ -76,7 +78,7 @@ const filters = reactive({
   secondary: '',
 })
 
-const reportConfigs: Record<string, ReportConfig> = {
+const reportConfigs: Record<ReportKey, ReportConfig> = {
   fleet: {
     label: 'Fleet',
     primaryLabel: 'Status',
@@ -190,17 +192,18 @@ watch(selectedReport, async () => {
 
 function buildParams() {
   const params: Record<string, string> = {}
+  const config = currentConfig.value
 
   if (filters.search.trim()) {
     params.search = filters.search.trim()
   }
 
-  if (currentConfig.value.primaryKey && filters.primary) {
-    params[currentConfig.value.primaryKey] = filters.primary
+  if (config.primaryKey && filters.primary) {
+    params[config.primaryKey] = filters.primary
   }
 
-  if (currentConfig.value.secondaryKey && filters.secondary) {
-    params[currentConfig.value.secondaryKey] = filters.secondary
+  if (config.secondaryKey && filters.secondary) {
+    params[config.secondaryKey] = filters.secondary
   }
 
   return params
@@ -398,7 +401,7 @@ function formatCell(value: unknown) {
             :class="selectedReport === key
             ? 'bg-slate-900 text-white'
             : 'border border-slate-300 text-slate-700 hover:bg-slate-100'"
-            @click="selectedReport = key as typeof selectedReport"
+            @click="selectedReport = key"
         >
           {{ config.label }}
         </button>

@@ -1,12 +1,82 @@
 export default {
+    dashboard: {
+        title: 'Fleet Overview',
+        subtitle: 'Real-time overview of company {company} fleet.',
+        lastUpdated: 'Last updated:',
+        loading: 'Loading dashboard...',
+
+        cards: {
+            fleet: 'Fleet',
+            total: 'total',
+            totalVehicles: 'Total vehicles',
+
+            online: 'Online',
+            onlineVehicles: 'Online vehicles',
+
+            offline: 'Offline',
+            offlineVehicles: 'Offline vehicles',
+
+            registrations: 'Registrations',
+            urgent: 'urgent',
+            expiringSoon: 'Expiring soon',
+        },
+
+        map: {
+            title: 'Live Fleet Map',
+            live: 'Live',
+            expand: 'Expand map',
+            collapse: 'Collapse',
+            trackingMap: 'Fleet tracking map',
+        },
+
+        registrations: {
+            title: 'Expiring Registrations',
+            shown: 'Shown:',
+            empty: 'No registrations expiring soon.',
+        },
+
+        mileage: {
+            title: 'Vehicles with highest mileage',
+            top: 'Top {count}',
+            vehicle: 'Vehicle',
+            plates: 'License plates',
+            mileage: 'Mileage',
+            status: 'Status',
+        },
+
+        activity: {
+            title: 'Recent Activity',
+            subtitle: 'Latest events',
+            empty: 'No recent activity yet.',
+        },
+
+        status: {
+            online: 'Online',
+            offline: 'Offline',
+        },
+
+        severity: {
+            high: 'high',
+            medium: 'medium',
+            low: 'low',
+            info: 'info',
+        },
+
+        daysLeft: {
+            today: 'today',
+            one: '1 day',
+            many: '{count} days',
+        }
+    },
+
     settings: {
         title: 'Settings',
-        subtitle: 'Tenant settings and user preferences.',
+        subtitle: 'Company settings and user preferences.',
         loading: 'Loading settings...',
 
         sections: {
-            tenant: 'Tenant settings',
-            preferences: 'User preferences',
+            tenant: 'Company Settings',
+            preferences: 'User Preferences',
         },
 
         fields: {
@@ -30,14 +100,14 @@ export default {
 
         actions: {
             saving: 'Saving...',
-            saveTenant: 'Save tenant settings',
+            saveTenant: 'Save company settings',
             savePreferences: 'Save preferences',
         },
 
         messages: {
-            tenantSaved: 'Tenant settings saved successfully.',
+            tenantSaved: 'Company settings saved successfully.',
             preferencesSaved: 'Preferences saved successfully.',
-            saveError: 'Settings could not be saved.',
+            saveError: 'Unable to save settings.',
         },
     },
 }
