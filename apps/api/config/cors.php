@@ -9,11 +9,13 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        'http://mamont.localhost:5173',
-        'http://mamont.localhost:5174',
+        'https://app.mamontrucker.com',
+        'https://admin.mamontrucker.com',
     ],
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '#^https://[a-z0-9-]+\.app\.mamontrucker\.com$#',
+    ],
 
     'allowed_headers' => ['*'],
 
