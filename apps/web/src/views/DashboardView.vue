@@ -53,36 +53,8 @@ const offlinePercentage = computed(() => {
   return Math.round((overview.value.offline_vehicles / overview.value.total_vehicles) * 100)
 })
 
-const mockMapVehicles = [
-  {
-    id: 1001,
-    name: 'Audi A4 Test',
-    license_plate: 'A12-K-345',
-    lat: 44.7569,
-    lng: 19.2164,
-    status: 'active',
-    online: true,
-    last_position_at: new Date().toISOString(),
-  },
-  {
-    id: 1002,
-    name: 'VW Crafter Test',
-    license_plate: 'M45-T-778',
-    lat: 44.5384,
-    lng: 18.6671,
-    status: 'active',
-    online: false,
-    last_position_at: new Date().toISOString(),
-  },
-]
+const mapVehicles = computed(() => summary.value?.map_vehicles ?? [])
 
-const mapVehicles = computed(() => {
-  if (summary.value?.map_vehicles?.length) {
-    return summary.value.map_vehicles
-  }
-
-  return mockMapVehicles
-})
 
 function formatDate(date: string | null) {
   if (!date) return '—'
