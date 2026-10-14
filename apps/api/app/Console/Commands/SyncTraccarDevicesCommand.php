@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Events\VehicleTelemetryUpdated;
 use App\Models\GpsDevice;
 use App\Services\Traccar\TraccarService;
 use App\Support\TraccarTelemetry;
@@ -60,7 +61,11 @@ class SyncTraccarDevicesCommand extends Command
 
             $position = null;
             $telemetry = null;
-            $previousPayload = is_array($gpsDevice->last_payload) ? $gpsDevice->last_payload : [];
+
+            $previousPayload = is_array($gpsDevice->last_payload)
+                ? $gpsDevice->last_payload
+                : [];
+
             $previousTelemetry = data_get($previousPayload, 'telemetry');
 
             if (! is_array($previousTelemetry)) {
@@ -73,19 +78,56 @@ class SyncTraccarDevicesCommand extends Command
 
                     if ($position) {
                         $latestTelemetry = TraccarTelemetry::fromPosition($position);
-                        $telemetry = $this->mergeTelemetryWithFallback($latestTelemetry, $previousTelemetry);
+
+                        $telemetry = $this->mergeTelemetryWithFallback(
+                            $latestTelemetry,
+                            $previousTelemetry
+                        );
 
                         if ($gpsDevice->vehicle) {
-                            $gpsDevice->vehicle->forceFill([
+                            $vehicle = $gpsDevice->vehicle;
+
+                            $vehicleData = [
                                 'last_known_lat' => data_get($position, 'latitude'),
                                 'last_known_lng' => data_get($position, 'longitude'),
                                 'last_position_at' => $this->resolvePositionTime($position),
                                 'last_speed_kph' => $this->resolveSpeedKph($position),
-                            ])->save();
+                            ];
+
+                            $mileageCandidate = TraccarTelemetry::mileageCandidate($telemetry);
+
+                            if (
+                                $mileageCandidate !== null &&
+                                (
+                                    $vehicle->current_mileage === null ||
+                                    $mileageCandidate['value'] >= (float) $vehicle->current_mileage
+                                )
+                            ) {
+                                $vehicleData['current_mileage'] = $mileageCandidate['value'];
+                            }
+
+                            $vehicle
+                                ->forceFill($vehicleData)
+                                ->save();
+
+                            /*
+                             * Broadcast the latest telemetry to the tenant's
+                             * private vehicle channel.
+                             *
+                             * The event implements ShouldBroadcast, so Laravel
+                             * will hand it over to the configured broadcaster.
+                             */
+                            VehicleTelemetryUpdated::dispatch(
+                                $vehicle->fresh(),
+                                data_get($remoteDevice, 'status') === 'online',
+                                $telemetry
+                            );
                         }
                     }
                 } catch (Throwable $exception) {
-                    $this->warn("Failed to sync latest position for IMEI {$uniqueId}: {$exception->getMessage()}");
+                    $this->warn(
+                        "Failed to sync latest position for IMEI {$uniqueId}: {$exception->getMessage()}"
+                    );
                 }
             }
 
@@ -105,10 +147,13 @@ class SyncTraccarDevicesCommand extends Command
             ])->save();
 
             $syncedCount++;
+
             $this->line("Synced IMEI {$uniqueId}");
         }
 
-        $this->info("Traccar sync completed. Synced: {$syncedCount}, Skipped: {$skippedCount}");
+        $this->info(
+            "Traccar sync completed. Synced: {$syncedCount}, Skipped: {$skippedCount}"
+        );
 
         return self::SUCCESS;
     }
@@ -118,8 +163,10 @@ class SyncTraccarDevicesCommand extends Command
      * @param array<string, mixed> $previousTelemetry
      * @return array<string, mixed>
      */
-    protected function mergeTelemetryWithFallback(array $latestTelemetry, array $previousTelemetry): array
-    {
+    protected function mergeTelemetryWithFallback(
+        array $latestTelemetry,
+        array $previousTelemetry
+    ): array {
         $fallbackFields = [
             'vin',
             'oem_fuel_level',
@@ -128,7 +175,10 @@ class SyncTraccarDevicesCommand extends Command
         ];
 
         foreach ($fallbackFields as $field) {
-            if (($latestTelemetry[$field] ?? null) === null && array_key_exists($field, $previousTelemetry)) {
+            if (
+                ($latestTelemetry[$field] ?? null) === null &&
+                array_key_exists($field, $previousTelemetry)
+            ) {
                 $latestTelemetry[$field] = $previousTelemetry[$field];
             }
         }
@@ -151,22 +201,34 @@ class SyncTraccarDevicesCommand extends Command
         ];
 
         foreach ($rawIoFallbackFields as $field) {
-            if (($latestRawIo[$field] ?? null) === null && array_key_exists($field, $previousRawIo)) {
+            if (
+                ($latestRawIo[$field] ?? null) === null &&
+                array_key_exists($field, $previousRawIo)
+            ) {
                 $latestRawIo[$field] = $previousRawIo[$field];
             }
         }
 
         $latestTelemetry['raw_io'] = $latestRawIo;
 
-        if (($latestTelemetry['oem_total_mileage'] ?? null) === null && ($latestRawIo['io389'] ?? null) !== null) {
+        if (
+            ($latestTelemetry['oem_total_mileage'] ?? null) === null &&
+            ($latestRawIo['io389'] ?? null) !== null
+        ) {
             $latestTelemetry['oem_total_mileage'] = $latestRawIo['io389'];
         }
 
-        if (($latestTelemetry['oem_fuel_level'] ?? null) === null && ($latestRawIo['io390'] ?? null) !== null) {
+        if (
+            ($latestTelemetry['oem_fuel_level'] ?? null) === null &&
+            ($latestRawIo['io390'] ?? null) !== null
+        ) {
             $latestTelemetry['oem_fuel_level'] = $latestRawIo['io390'];
         }
 
-        if (($latestTelemetry['battery_current'] ?? null) === null && ($latestRawIo['io69'] ?? null) !== null) {
+        if (
+            ($latestTelemetry['battery_current'] ?? null) === null &&
+            ($latestRawIo['io69'] ?? null) !== null
+        ) {
             $latestTelemetry['battery_current'] = $latestRawIo['io69'];
         }
 

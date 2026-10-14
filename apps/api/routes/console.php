@@ -12,4 +12,5 @@ Schedule::command('app:generate-operational-alerts')
 
 Schedule::command('traccar:sync-devices')
     ->everyMinute()
-    ->withoutOverlapping();
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/traccar-sync.log'));
