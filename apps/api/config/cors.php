@@ -1,6 +1,7 @@
 <?php
 
 return [
+
     'paths' => [
         'api/*',
         'sanctum/csrf-cookie',
@@ -8,10 +9,13 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
-        'https://app.mamontrucker.com',
-        'https://admin.mamontrucker.com',
-    ],
+    'allowed_origins' => array_filter(array_merge(
+        [
+            'https://app.mamontrucker.com',
+            'https://admin.mamontrucker.com',
+        ],
+        array_filter(array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', ''))))
+    )),
 
     'allowed_origins_patterns' => [
         '#^https://[a-z0-9-]+\.app\.mamontrucker\.com$#',

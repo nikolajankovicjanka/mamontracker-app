@@ -12,8 +12,10 @@ services:
       - ./apps/api:/var/www/html
       - ./docker/php/zz-local.ini:/usr/local/etc/php/conf.d/zz-local.ini
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - mamontrucker
 
@@ -43,12 +45,120 @@ services:
       - "3307:3306"
     volumes:
       - mamontrucker_db_data:/var/lib/mysql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'MYSQL_PWD="$${MYSQL_PASSWORD}" mysql -h127.0.0.1 -u"$${MYSQL_USER}" "$${MYSQL_DATABASE}" -e "SELECT 1" >/dev/null 2>&1'
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     networks:
       - mamontrucker
 
   redis:
     image: redis:7-alpine
     container_name: mamontrucker_redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - mamontrucker
+
+  reverb:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: mamontrucker_reverb
+    restart: unless-stopped
+    user: "${UID}:${GID}"
+    working_dir: /var/www/html
+    environment:
+      COMPOSER_HOME: /tmp/composer
+    command:
+      - php
+      - artisan
+      - reverb:start
+      - --host=0.0.0.0
+      - --port=8080
+    volumes:
+      - ./apps/api:/var/www/html
+      - ./docker/php/zz-local.ini:/usr/local/etc/php/conf.d/zz-local.ini
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8081:8080"
+    networks:
+      - mamontrucker
+
+  queue:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: mamontrucker_queue
+    restart: unless-stopped
+    user: "${UID}:${GID}"
+    working_dir: /var/www/html
+    environment:
+      COMPOSER_HOME: /tmp/composer
+    command:
+      - php
+      - artisan
+      - queue:work
+      - --sleep=1
+      - --tries=3
+      - --backoff=3
+      - --timeout=60
+    stop_grace_period: 90s
+    volumes:
+      - ./apps/api:/var/www/html
+      - ./docker/php/zz-local.ini:/usr/local/etc/php/conf.d/zz-local.ini
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      reverb:
+        condition: service_started
+    networks:
+      - mamontrucker
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: mamontrucker_scheduler
+    restart: unless-stopped
+    user: "${UID}:${GID}"
+    working_dir: /var/www/html
+    environment:
+      COMPOSER_HOME: /tmp/composer
+    command:
+      - php
+      - artisan
+      - schedule:work
+    volumes:
+      - ./apps/api:/var/www/html
+      - ./docker/php/zz-local.ini:/usr/local/etc/php/conf.d/zz-local.ini
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      queue:
+        condition: service_started
     networks:
       - mamontrucker
 
@@ -56,8 +166,8 @@ services:
     image: axllent/mailpit:latest
     container_name: mamontrucker_mailpit
     ports:
-      - "8025:8025"
-      - "1025:1025"
+      - "1026:1025"
+      - "8026:8025"
     networks:
       - mamontrucker
 

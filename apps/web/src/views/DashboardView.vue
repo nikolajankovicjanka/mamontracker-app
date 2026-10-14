@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import {
   CarFront,
@@ -14,6 +14,7 @@ import {
 import FleetMap from '@/components/FleetMap.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useDashboardStore } from '@/stores/dashboard'
+import type { VehicleTelemetryEvent } from '@/stores/dashboard'
 import { useI18n } from 'vue-i18n'
 
 const auth = useAuthStore()
@@ -24,22 +25,141 @@ const mapExpanded = ref(false)
 const { t } = useI18n()
 
 let refreshInterval: number | null = null
+let telemetryRefreshTimeout: number | null = null
+let channelName: string | null = null
+let stopAuthWatch: (() => void) | null = null
+let disposed = false
+let contextVersion = 0
 
-onMounted(async () => {
-  await dashboard.fetchSummary()
+function isTelemetryEvent(value: unknown): value is VehicleTelemetryEvent {
+  if (!value || typeof value !== 'object' || !('vehicle' in value)) return false
+  const vehicle = value.vehicle
+  if (!vehicle || typeof vehicle !== 'object') return false
+  const item = vehicle as Record<string, unknown>
+  const nullableNumber = (number: unknown) => number === null
+      || (typeof number === 'number' && Number.isFinite(number))
 
-  refreshInterval = window.setInterval(async () => {
-    if (document.hidden) return
-    await dashboard.refreshSummary()
-  }, 30000)
+  return typeof item.id === 'number' && Number.isSafeInteger(item.id) && item.id > 0
+      && typeof item.name === 'string'
+      && typeof item.license_plate === 'string'
+      && typeof item.online === 'boolean'
+      && nullableNumber(item.lat)
+      && nullableNumber(item.lng)
+      && nullableNumber(item.last_speed_kph)
+      && nullableNumber(item.current_mileage)
+      && (item.last_position_at === null
+          || (typeof item.last_position_at === 'string'
+              && Number.isFinite(Date.parse(item.last_position_at))))
+}
+
+function clearTelemetryRefresh(): void {
+  if (telemetryRefreshTimeout !== null) {
+    window.clearTimeout(telemetryRefreshTimeout)
+    telemetryRefreshTimeout = null
+  }
+}
+
+function leaveVehicleChannel(): void {
+  clearTelemetryRefresh()
+  if (channelName && window.Echo) {
+    window.Echo.leave(channelName)
+  }
+  channelName = null
+}
+
+function scheduleSummaryRefresh(): void {
+  if (telemetryRefreshTimeout !== null || document.hidden || !auth.user || !auth.tenant) return
+
+  // Batch the sync's vehicle events into one request for counts and rankings.
+  telemetryRefreshTimeout = window.setTimeout(() => {
+    telemetryRefreshTimeout = null
+    if (!disposed && !document.hidden && auth.user && auth.tenant) {
+      void dashboard.refreshSummary()
+    }
+  }, 1000)
+}
+
+function refreshVisibleDashboard(): void {
+  if (!disposed && !document.hidden && auth.user && auth.tenant) {
+    void dashboard.refreshSummary()
+  }
+}
+
+onMounted(() => {
+  stopAuthWatch = watch(
+      () => auth.user && auth.tenant ? `${auth.user.id}:${auth.tenant.id}` : null,
+      async (context) => {
+        const version = ++contextVersion
+        leaveVehicleChannel()
+        dashboard.reset()
+        if (!context || disposed) return
+
+        const tenantId = auth.tenant?.id
+        if (!tenantId) return
+
+        if (window.Echo) {
+          const name = `tenant.${tenantId}.vehicles`
+          channelName = name
+
+          window.Echo.private(name)
+              .listen('.vehicle.telemetry.updated', (event: unknown) => {
+                if (disposed || version !== contextVersion) return
+                if (!isTelemetryEvent(event)) {
+                  console.warn('Unexpected vehicle telemetry payload:', event)
+                  return
+                }
+
+                dashboard.applyTelemetry(event)
+                scheduleSummaryRefresh()
+                if (import.meta.env.DEV) {
+                  console.debug('Vehicle telemetry updated:', event.vehicle.id)
+                }
+              })
+              .subscribed(() => {
+                if (disposed || version !== contextVersion) return
+                if (import.meta.env.DEV) console.debug('Vehicle channel subscribed:', name)
+                // Also catches up after a socket reconnect.
+                scheduleSummaryRefresh()
+              })
+              .error((error: unknown) => {
+                if (!disposed && version === contextVersion) {
+                  console.error('Vehicle channel subscription failed:', error)
+                }
+              })
+        } else {
+          console.warn('Echo is unavailable; dashboard uses periodic refresh.')
+        }
+
+        try {
+          await dashboard.fetchSummary()
+        } catch (error) {
+          if (!disposed && version === contextVersion) {
+            console.error('Dashboard initial load failed:', error)
+          }
+        }
+      },
+      { immediate: true, flush: 'sync' },
+  )
+
+  refreshInterval = window.setInterval(refreshVisibleDashboard, 30000)
+  document.addEventListener('visibilitychange', refreshVisibleDashboard)
 })
 
 onBeforeUnmount(() => {
-  if (refreshInterval) {
+  disposed = true
+  contextVersion += 1
+  stopAuthWatch?.()
+  stopAuthWatch = null
+  leaveVehicleChannel()
+  document.removeEventListener('visibilitychange', refreshVisibleDashboard)
+
+  if (refreshInterval !== null) {
     window.clearInterval(refreshInterval)
     refreshInterval = null
   }
+  dashboard.reset()
 })
+
 
 const overview = computed(() => summary.value?.overview)
 
@@ -53,36 +173,8 @@ const offlinePercentage = computed(() => {
   return Math.round((overview.value.offline_vehicles / overview.value.total_vehicles) * 100)
 })
 
-const mockMapVehicles = [
-  {
-    id: 1001,
-    name: 'Audi A4 Test',
-    license_plate: 'A12-K-345',
-    lat: 44.7569,
-    lng: 19.2164,
-    status: 'active',
-    online: true,
-    last_position_at: new Date().toISOString(),
-  },
-  {
-    id: 1002,
-    name: 'VW Crafter Test',
-    license_plate: 'M45-T-778',
-    lat: 44.5384,
-    lng: 18.6671,
-    status: 'active',
-    online: false,
-    last_position_at: new Date().toISOString(),
-  },
-]
+const mapVehicles = computed(() => summary.value?.map_vehicles ?? [])
 
-const mapVehicles = computed(() => {
-  if (summary.value?.map_vehicles?.length) {
-    return summary.value.map_vehicles
-  }
-
-  return mockMapVehicles
-})
 
 function formatDate(date: string | null) {
   if (!date) return '—'
@@ -347,7 +439,7 @@ function activityBadgeClass(severity: string | null) {
             <div class="absolute left-4 top-4 z-10 rounded-2xl border border-white/70 bg-white/90 px-3 py-2 text-xs font-medium text-slate-600 shadow-sm backdrop-blur">
               <div class="flex items-center gap-2">
                 <MapPinned class="h-4 w-4 text-blue-600" />
-                <span>{{ t('dashboard.map.trackingMap') }}a</span>
+                <span>{{ t('dashboard.map.trackingMap') }}</span>
               </div>
             </div>
 
